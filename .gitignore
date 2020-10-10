@@ -1,0 +1,4 @@
+.*.swp
+bin/loading
+bin/loading.hi
+bin/loading.o

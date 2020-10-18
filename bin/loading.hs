@@ -15,6 +15,10 @@ main = do
   window <- createWindow "Loading..." defaultWindow
     { windowInitialSize = V2 1920 1200 }
   renderer <- createRenderer window (-1) defaultRenderer
+  -- Use big pixels, like an old video game. Instead of 320x240, I use
+  -- something similar but with a 1.6 aspect ratio (instead of 1.33).
+  -- Unfortunately, this doesn't affect sdl2-gfx's `triangle` routine.
+  rendererLogicalSize renderer $= (Just (V2 384 240))
 
   putStrLn "Press `q` to quit."
   loop renderer
@@ -32,8 +36,21 @@ main = do
 loop :: Renderer -> IO ()
 loop renderer = do
   events <- pollEvents
-  rendererDrawColor renderer $= V4 255 0 0 255
+
+  -- Clear to red.
+  rendererDrawColor renderer $= V4 0 0 204 255
   clear renderer
+
+  -- How to draw a point.
+  rendererDrawColor renderer $= V4 255 255 255 255
+  drawPoint renderer (P (V2 10 10))
+
+  -- How to draw a rectangle outline.
+  drawRect renderer (Just (SDL.Rectangle (P (V2 20 10)) (V2 20 20)))
+
+  -- How to draw a filled rectangle.
+  fillRect renderer (Just (SDL.Rectangle (P (V2 50 10)) (V2 20 20)))
+
   present renderer
   let qPressed = any isQPressed events
   unless qPressed (loop renderer)

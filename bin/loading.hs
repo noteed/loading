@@ -4,6 +4,7 @@
 module Main where
 
 import SDL
+import SDL.Primitive (fillTriangle)
 import Linear (V4(..))
 import Control.Monad (unless)
 
@@ -57,6 +58,9 @@ loop renderer = do
 
   -- How to draw a line.
   drawLine renderer (P (V2 10 40)) (P (V2 70 60))
+
+  -- How to draw a triangle with sdl2-gfx.
+  fillTriangle renderer (V2 10 50) (V2 70 70) (V2 60 100) (V4 255 255 0 255)
 
   -- Reset the render target to the default.
   rendererRenderTarget renderer $= Nothing

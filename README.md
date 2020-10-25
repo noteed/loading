@@ -30,10 +30,13 @@ $ scripts/ghcid.sh
 
 - The rendering is done with a low resolution, similar to old games.
 - Some basic shapes (point, line, triangle) are rendered.
+- Some commands can be done with a gamepad.
 - Left mouse button clicks add points.
 - Pressing `q` quits the application.
-- Pressing `m` shows/hides a magnified zone of the screen.
-- Pressing the arrow keys moves the magnified zone selection.
+- Pressing `e` enables/disables logging polled events.
+- Pressing `m` or right shoulder button show/hide a magnified zone of the
+  screen.
+- Pressing the arrow keys or the d-pad move the magnified zone selection.
 
 
 ## Notes
@@ -49,3 +52,13 @@ work, but actually some drawing routines are not properly scaled (e.g.
 `drawLine`, or `triangle` from the sdl-gfx library). Instead I have used a low
 resolution texture as rendering target, which is then copied to the default
 render target.
+
+I was unsure if my X Box controller would work. I plugged it in (wired), and
+checked `dmesg`:
+
+```
+[16352.189193] input: Microsoft X-Box One S pad as /devices/pci0000:00/0000:00:14.0/usb1/1-1/1-1:1.0/input/input21
+[16352.189271] usbcore: registered new interface driver xpad
+```
+
+This looked good and I confirmed it was working with `jstest /dev/input/js0`.

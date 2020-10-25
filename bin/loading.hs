@@ -7,6 +7,8 @@ module Main where
 import Control.Monad (unless, when)
 import Data.Int (Int32)
 import Data.List (foldl')
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import Foreign.C.Types (CInt)
 import Linear (V4(..))
 import SDL
@@ -16,13 +18,27 @@ import SDL.Primitive (fillTriangle)
 --------------------------------------------------------------------------------
 main :: IO ()
 main = do
+  putStrLn "Loading..."
   initializeAll
   window <- createWindow "Loading..." defaultWindow
     { windowInitialSize = V2 1920 1200 }
   renderer <- createRenderer window (-1) defaultRenderer
 
+  -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
+  -- below will reports gamepad events.
+  n <- numJoysticks
+  putStrLn ("Detected " ++ show n ++ " gamepads.")
+  gamepads <- availableJoysticks
+  mapM_ (putStrLn . logGamepad) gamepads
+  gamepad <-
+    if not (V.null gamepads)
+    then Just <$> openJoystick (V.head gamepads)
+    else return Nothing
+
   putStrLn "Press `q` to quit."
   loop renderer initialState
+
+  maybe (return ()) closeJoystick gamepad
   putStrLn "Bye."
 
   -- -1 means "initialize the first rendering driver supporting the requested
@@ -32,11 +48,16 @@ main = do
   -- I tried to change the defaultWindow { windowMode = Fullscreen } or
   -- { windowMode = FullscreenDesktop } but this didn't work...
 
+logGamepad JoystickDevice {..} =
+  "Gamepad #" ++ show joystickDeviceId ++ " is " ++
+    T.unpack joystickDeviceName ++ "."
 
 --------------------------------------------------------------------------------
 data State = State
   { sQuit :: Bool
     -- ^ When True, exit the main loop.
+  , sShowEvents :: Bool
+    -- ^ When True, log the polled events.
   , sMagnifiedPos :: Point V2 CInt
   , sMagnified :: Bool
     -- ^ When True, show a mignified zone of the screen.
@@ -46,6 +67,7 @@ data State = State
 
 initialState = State
   { sQuit = False
+  , sShowEvents = False
   , sMagnifiedPos = P (V2 0 0)
   , sMagnified = False
   , sPoints = []
@@ -58,6 +80,9 @@ loop renderer st = do
   events <- pollEvents
 
   withLowResolution st renderer draw
+
+  when (sShowEvents st) $
+    mapM_ print events
 
   let st' = foldl' processEvent st events
   unless (sQuit st') (loop renderer st')
@@ -127,12 +152,27 @@ processEvent st event = case eventPayload event of
 
   KeyboardEvent keyboardEvent |
     keyboardEventKeyMotion keyboardEvent == Pressed &&
+    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeE ->
+    st { sShowEvents = not (sShowEvents st) }
+                              |
+    keyboardEventKeyMotion keyboardEvent == Pressed &&
     keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM ->
     st { sMagnified = not (sMagnified st) }
                               |
     keyboardEventKeyMotion keyboardEvent == Pressed ->
     let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent) in
     st { sMagnifiedPos = moveMagnifyingZone (sMagnifiedPos st) (arrowToDelta arrow) }
+
+  JoyButtonEvent (JoyButtonEventData {..}) |
+    joyButtonEventWhich == 0 &&
+    joyButtonEventButton == 5 &&
+    joyButtonEventState == JoyButtonPressed ->
+    -- Right shoulder button.
+    st { sMagnified = not (sMagnified st) }
+
+  JoyHatEvent (JoyHatEventData {..}) | joyHatEventWhich == 0 ->
+    st { sMagnifiedPos =
+         moveMagnifyingZone (sMagnifiedPos st) (hatToDelta joyHatEventValue) }
 
   _ -> st
 
@@ -148,6 +188,12 @@ arrowToDelta KeycodeUp = V2 0 (-15)
 arrowToDelta KeycodeRight = V2 12 0
 arrowToDelta KeycodeDown = V2 0 15
 arrowToDelta _ = V2 0 0
+
+hatToDelta HatLeft = V2 (-12) 0
+hatToDelta HatUp = V2 0 (-15)
+hatToDelta HatRight = V2 12 0
+hatToDelta HatDown = V2 0 15
+hatToDelta _ = V2 0 0
 
 moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
   where

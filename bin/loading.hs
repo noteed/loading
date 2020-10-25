@@ -4,14 +4,13 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import Control.Monad (when)
+import Control.Monad (unless, when)
 import Data.Int (Int32)
 import Data.List (foldl')
 import Foreign.C.Types (CInt)
+import Linear (V4(..))
 import SDL
 import SDL.Primitive (fillTriangle)
-import Linear (V4(..))
-import Control.Monad (unless)
 
 
 --------------------------------------------------------------------------------
@@ -57,8 +56,6 @@ loop renderer st = do
   events <- pollEvents
 
   withLowResolution st renderer draw
-
-  mapM_ (print . eventPayload) events
 
   let st' = foldl' processEvent st events
   unless (sQuit st') (loop renderer st')
@@ -141,6 +138,8 @@ isQPressed event =
       keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
     _ -> False
 
+
+--------------------------------------------------------------------------------
 -- | Convert from mouse button data, at real window resolution, to drawPoint
 -- data, at low resolution.
 int32ToCInt :: Point V2 Int32 -> Point V2 CInt

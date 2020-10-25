@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Control.Monad (when)
 import Data.Int (Int32)
 import Data.List (foldl')
 import Foreign.C.Types (CInt)
@@ -36,11 +37,16 @@ main = do
 --------------------------------------------------------------------------------
 data State = State
   { sQuit :: Bool
+    -- ^ When True, exit the main loop.
+  , sMagnified :: Bool
+    -- ^ When True, show a mignified zone of the screen.
   , sPoints :: [Point V2 CInt]
+    -- ^ Points to draw. They are added by left-clicking.
   }
 
 initialState = State
   { sQuit = False
+  , sMagnified = False
   , sPoints = []
   }
 
@@ -50,14 +56,14 @@ loop :: Renderer -> State -> IO ()
 loop renderer st = do
   events <- pollEvents
 
-  withLowResolution renderer (draw st)
+  withLowResolution st renderer draw
 
   mapM_ (print . eventPayload) events
 
   let st' = foldl' processEvent st events
   unless (sQuit st') (loop renderer st')
 
-withLowResolution renderer drawingFunction = do
+withLowResolution st renderer drawingFunction = do
   -- Create a render target with a low resolution and big pixels, and set it as
   -- the current render target. Instead of 320x240, I use something similar but
   -- with a 1.6 aspect ratio (instead of 1.33). Another way is to use
@@ -70,16 +76,24 @@ withLowResolution renderer drawingFunction = do
   rendererDrawColor renderer $= V4 0 0 204 255
   clear renderer
 
-  drawingFunction renderer
+  drawingFunction st renderer
 
   -- Reset the render target to the default.
   rendererRenderTarget renderer $= Nothing
 
-  -- Render the previsous render target to the default render target and
-  -- present it.
+  -- Render the previous render target to the default render target and
+  -- present it. 1 pixel becomes a 5x5 square.
   copy renderer target
     (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
     (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+
+  when (sMagnified st) $
+  -- In addition, a 48x60 zone is magnified 20x and rendered on the right half
+  -- of the screen.
+    copy renderer target
+      (Just (SDL.Rectangle (P (V2 0 0)) (V2 48 60)))
+      (Just (SDL.Rectangle (P (V2 960 0)) (V2 960 1200)))
+
   present renderer
 
 draw st renderer = do
@@ -109,6 +123,13 @@ processEvent st event = case eventPayload event of
     if mouseButtonEventButton == ButtonLeft &&
        mouseButtonEventMotion == Pressed
     then st { sPoints = int32ToCInt mouseButtonEventPos : sPoints st }
+    else st
+
+
+  KeyboardEvent keyboardEvent ->
+    if keyboardEventKeyMotion keyboardEvent == Pressed &&
+       keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM
+    then st { sMagnified = not (sMagnified st) }
     else st
 
   _ -> st

@@ -31,6 +31,8 @@ $ scripts/ghcid.sh
 - The rendering is done with a low resolution, similar to old games.
 - Some basic shapes (point, line, triangle) are rendered.
 - Left mouse button clicks add points.
+- Pressing `q` quits the application.
+- Pressing `m` shows/hides a magnified zone of the screen.
 
 
 ## Notes

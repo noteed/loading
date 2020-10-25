@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import Data.List (foldl')
 import SDL
 import SDL.Primitive (fillTriangle)
 import Linear (V4(..))
@@ -18,7 +19,7 @@ main = do
   renderer <- createRenderer window (-1) defaultRenderer
 
   putStrLn "Press `q` to quit."
-  loop renderer
+  loop renderer initialState
   putStrLn "Bye."
 
   -- -1 means "initialize the first rendering driver supporting the requested
@@ -30,8 +31,18 @@ main = do
 
 
 --------------------------------------------------------------------------------
-loop :: Renderer -> IO ()
-loop renderer = do
+data State = State
+  { sQuit :: Bool
+  }
+
+initialState = State
+  { sQuit = False
+  }
+
+
+--------------------------------------------------------------------------------
+loop :: Renderer -> State -> IO ()
+loop renderer st = do
   events <- pollEvents
 
   -- Create a render target with a low resolution and big pixels, and set it as
@@ -72,8 +83,15 @@ loop renderer = do
     (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
   present renderer
 
-  let qPressed = any isQPressed events
-  unless qPressed (loop renderer)
+  mapM_ (print . eventPayload) events
+
+  let st' = foldl' processEvent st events
+  unless (sQuit st') (loop renderer st')
+
+
+--------------------------------------------------------------------------------
+processEvent st event | isQPressed event = st { sQuit = True }
+processEvent st _ = st
 
 isQPressed event =
   case eventPayload event of

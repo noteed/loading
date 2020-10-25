@@ -45,6 +45,14 @@ loop :: Renderer -> State -> IO ()
 loop renderer st = do
   events <- pollEvents
 
+  withLowResolution renderer draw
+
+  mapM_ (print . eventPayload) events
+
+  let st' = foldl' processEvent st events
+  unless (sQuit st') (loop renderer st')
+
+withLowResolution renderer drawingFunction = do
   -- Create a render target with a low resolution and big pixels, and set it as
   -- the current render target. Instead of 320x240, I use something similar but
   -- with a 1.6 aspect ratio (instead of 1.33). Another way is to use
@@ -57,6 +65,19 @@ loop renderer st = do
   rendererDrawColor renderer $= V4 0 0 204 255
   clear renderer
 
+  drawingFunction renderer
+
+  -- Reset the render target to the default.
+  rendererRenderTarget renderer $= Nothing
+
+  -- Render the previsous render target to the default render target and
+  -- present it.
+  copy renderer target
+    (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+    (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+  present renderer
+
+draw renderer = do
   -- How to draw a point.
   rendererDrawColor renderer $= V4 255 255 255 255
   drawPoint renderer (P (V2 10 10))
@@ -72,21 +93,6 @@ loop renderer st = do
 
   -- How to draw a triangle with sdl2-gfx.
   fillTriangle renderer (V2 10 50) (V2 70 70) (V2 60 100) (V4 255 255 0 255)
-
-  -- Reset the render target to the default.
-  rendererRenderTarget renderer $= Nothing
-
-  -- Render the previsous render target to the default render target and
-  -- present it.
-  copy renderer target
-    (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
-    (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
-  present renderer
-
-  mapM_ (print . eventPayload) events
-
-  let st' = foldl' processEvent st events
-  unless (sQuit st') (loop renderer st')
 
 
 --------------------------------------------------------------------------------

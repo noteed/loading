@@ -61,6 +61,8 @@ data State = State
   , sMagnifiedPos :: Point V2 CInt
   , sMagnified :: Bool
     -- ^ When True, show a mignified zone of the screen.
+  , sCursor :: Point V2 CInt
+    -- ^ The main controlling point to interact with the application.
   , sPoints :: [Point V2 CInt]
     -- ^ Points to draw. They are added by left-clicking.
   }
@@ -70,6 +72,7 @@ initialState = State
   , sShowEvents = False
   , sMagnifiedPos = P (V2 0 0)
   , sMagnified = False
+  , sCursor = P (V2 (384 `div` 2) ( 240 `div` 2))
   , sPoints = []
   }
 
@@ -123,7 +126,7 @@ withLowResolution st renderer drawingFunction = do
 draw st renderer = do
   -- How to draw a point.
   rendererDrawColor renderer $= V4 255 255 255 255
-  drawPoint renderer (P (V2 10 10))
+  drawPoint renderer (sCursor st)
   mapM_ (drawPoint renderer) (sPoints st)
 
   -- How to draw a rectangle outline.
@@ -159,9 +162,20 @@ processEvent st event = case eventPayload event of
     keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM ->
     st { sMagnified = not (sMagnified st) }
                               |
+    keyboardEventKeyMotion keyboardEvent == Pressed &&
+    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeSpace ->
+    st { sPoints = sCursor st : sPoints st }
+                              |
     keyboardEventKeyMotion keyboardEvent == Pressed ->
-    let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent) in
-    st { sMagnifiedPos = moveMagnifyingZone (sMagnifiedPos st) (arrowToDelta arrow) }
+    let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent)
+        magpos = if sMagnified st
+                 then moveMagnifyingZone (sMagnifiedPos st) (arrowToDelta arrow)
+                 else sMagnifiedPos st
+        curpos = if not (sMagnified st)
+                 then moveCursor (sCursor st) (arrowToDelta' arrow)
+                 else sCursor st
+    in
+    st { sMagnifiedPos = magpos, sCursor = curpos }
 
   JoyButtonEvent (JoyButtonEventData {..}) |
     joyButtonEventWhich == 0 &&
@@ -189,6 +203,12 @@ arrowToDelta KeycodeRight = V2 12 0
 arrowToDelta KeycodeDown = V2 0 15
 arrowToDelta _ = V2 0 0
 
+arrowToDelta' KeycodeLeft = V2 (-1) 0
+arrowToDelta' KeycodeUp = V2 0 (-1)
+arrowToDelta' KeycodeRight = V2 1 0
+arrowToDelta' KeycodeDown = V2 0 1
+arrowToDelta' _ = V2 0 0
+
 hatToDelta HatLeft = V2 (-12) 0
 hatToDelta HatUp = V2 0 (-15)
 hatToDelta HatRight = V2 12 0
@@ -202,6 +222,15 @@ moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
     x3 = if x2 < 0 then 0 else x2
     y1 = y + dy
     y2 = if y1 > 240 - 60 then 240 - 60 else y1
+    y3 = if y2 < 0 then 0 else y2
+
+moveCursor (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
+  where
+    x1 = x + dx
+    x2 = if x1 > 384 then 384 else x1
+    x3 = if x2 < 0 then 0 else x2
+    y1 = y + dy
+    y2 = if y1 > 240 then 240 else y1
     y3 = if y2 < 0 then 0 else y2
 
 

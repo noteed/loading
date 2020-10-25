@@ -37,15 +37,17 @@ main = do
 data State = State
   { sQuit :: Bool
     -- ^ When True, exit the main loop.
-  , sMagnified :: Maybe (Point V2 CInt)
-    -- ^ When Just, show a mignified zone of the screen.
+  , sMagnifiedPos :: Point V2 CInt
+  , sMagnified :: Bool
+    -- ^ When True, show a mignified zone of the screen.
   , sPoints :: [Point V2 CInt]
     -- ^ Points to draw. They are added by left-clicking.
   }
 
 initialState = State
   { sQuit = False
-  , sMagnified = Nothing
+  , sMagnifiedPos = P (V2 0 0)
+  , sMagnified = False
   , sPoints = []
   }
 
@@ -86,10 +88,9 @@ withLowResolution st renderer drawingFunction = do
 
   -- In addition, a 48x60 zone is magnified 20x and rendered on the right half
   -- of the screen.
-  case sMagnified st of
-    Nothing -> return ()
-    Just pos -> copy renderer target
-      (Just (SDL.Rectangle pos (V2 48 60)))
+  when (sMagnified st) $
+    copy renderer target
+      (Just (SDL.Rectangle (sMagnifiedPos st) (V2 48 60)))
       (Just (SDL.Rectangle (P (V2 960 0)) (V2 960 1200)))
 
   present renderer
@@ -124,12 +125,14 @@ processEvent st event = case eventPayload event of
     else st
 
 
-  KeyboardEvent keyboardEvent ->
-    if keyboardEventKeyMotion keyboardEvent == Pressed &&
-       keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM
-    then st { sMagnified = case sMagnified st of
-              { Nothing -> Just (P (V2 0 0)) ;  _ -> Nothing } }
-    else st
+  KeyboardEvent keyboardEvent |
+    keyboardEventKeyMotion keyboardEvent == Pressed &&
+    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM ->
+    st { sMagnified = not (sMagnified st) }
+                              |
+    keyboardEventKeyMotion keyboardEvent == Pressed ->
+    let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent) in
+    st { sMagnifiedPos = moveMagnifyingZone (sMagnifiedPos st) (arrowToDelta arrow) }
 
   _ -> st
 
@@ -139,6 +142,21 @@ isQPressed event =
       keyboardEventKeyMotion keyboardEvent == Pressed &&
       keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
     _ -> False
+
+arrowToDelta KeycodeLeft = V2 (-12) 0
+arrowToDelta KeycodeUp = V2 0 (-15)
+arrowToDelta KeycodeRight = V2 12 0
+arrowToDelta KeycodeDown = V2 0 15
+arrowToDelta _ = V2 0 0
+
+moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
+  where
+    x1 = x + dx
+    x2 = if x1 > 384 - 48 then 384 - 48 else x1
+    x3 = if x2 < 0 then 0 else x2
+    y1 = y + dy
+    y2 = if y1 > 240 - 60 then 240 - 60 else y1
+    y3 = if y2 < 0 then 0 else y2
 
 
 --------------------------------------------------------------------------------

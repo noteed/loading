@@ -33,6 +33,7 @@ $ scripts/ghcid.sh
 - Left mouse button clicks add points.
 - Pressing `q` quits the application.
 - Pressing `m` shows/hides a magnified zone of the screen.
+- Pressing the arrow keys moves the magnified zone selection.
 
 
 ## Notes

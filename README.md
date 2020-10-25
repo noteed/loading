@@ -24,3 +24,18 @@ To validate the code during developement, use `ghcid` by running:
 ```
 $ scripts/ghcid.sh
 ```
+
+
+## Notes
+
+The `defaultWindow` has its `windowResizable` to False. With XMonad, this makes
+the window appear at the requested size and centered (above tiled windows).
+Setting `windowResizable` to True instead makes it behave like a regular
+window: when it appears, it is tiled among the other windows.
+
+To obtain "big" pixels, i.e. an appearance of a low resolution image similar to
+old games, there is a `rendererLogicalSize` function. At first it seems to
+work, but actually some drawing routines are not properly scaled (e.g.
+`drawLine`, or `triangle` from the sdl-gfx library). Instead I have used a low
+resolution texture as rendering target, which is then copied to the default
+render target.

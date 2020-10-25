@@ -1,9 +1,12 @@
 -- | This is (mostly) the example at the top of this documentation page:
 -- https://hackage.haskell.org/package/sdl2-2.5.2.0/docs/SDL.html.
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Data.Int (Int32)
 import Data.List (foldl')
+import Foreign.C.Types (CInt)
 import SDL
 import SDL.Primitive (fillTriangle)
 import Linear (V4(..))
@@ -33,10 +36,12 @@ main = do
 --------------------------------------------------------------------------------
 data State = State
   { sQuit :: Bool
+  , sPoints :: [Point V2 CInt]
   }
 
 initialState = State
   { sQuit = False
+  , sPoints = []
   }
 
 
@@ -45,7 +50,7 @@ loop :: Renderer -> State -> IO ()
 loop renderer st = do
   events <- pollEvents
 
-  withLowResolution renderer draw
+  withLowResolution renderer (draw st)
 
   mapM_ (print . eventPayload) events
 
@@ -77,10 +82,11 @@ withLowResolution renderer drawingFunction = do
     (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
   present renderer
 
-draw renderer = do
+draw st renderer = do
   -- How to draw a point.
   rendererDrawColor renderer $= V4 255 255 255 255
   drawPoint renderer (P (V2 10 10))
+  mapM_ (drawPoint renderer) (sPoints st)
 
   -- How to draw a rectangle outline.
   drawRect renderer (Just (SDL.Rectangle (P (V2 20 10)) (V2 20 20)))
@@ -97,7 +103,15 @@ draw renderer = do
 
 --------------------------------------------------------------------------------
 processEvent st event | isQPressed event = st { sQuit = True }
-processEvent st _ = st
+
+processEvent st event = case eventPayload event of
+  MouseButtonEvent (MouseButtonEventData {..}) ->
+    if mouseButtonEventButton == ButtonLeft &&
+       mouseButtonEventMotion == Pressed
+    then st { sPoints = int32ToCInt mouseButtonEventPos : sPoints st }
+    else st
+
+  _ -> st
 
 isQPressed event =
   case eventPayload event of
@@ -105,3 +119,9 @@ isQPressed event =
       keyboardEventKeyMotion keyboardEvent == Pressed &&
       keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
     _ -> False
+
+-- | Convert from mouse button data, at real window resolution, to drawPoint
+-- data, at low resolution.
+int32ToCInt :: Point V2 Int32 -> Point V2 CInt
+int32ToCInt (P (V2 x y)) =
+  P (V2 (fromIntegral x `div` 5) (fromIntegral y `div` 5))

@@ -26,6 +26,13 @@ $ scripts/ghcid.sh
 ```
 
 
+## Current status
+
+- The rendering is done with a low resolution, similar to old games.
+- Some basic shapes (point, line, triangle) are rendered.
+- Left mouse button clicks add points.
+
+
 ## Notes
 
 The `defaultWindow` has its `windowResizable` to False. With XMonad, this makes

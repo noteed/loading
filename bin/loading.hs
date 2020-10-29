@@ -108,18 +108,19 @@ withLowResolution st renderer drawingFunction = do
   -- Reset the render target to the default.
   rendererRenderTarget renderer $= Nothing
 
-  -- Render the previous render target to the default render target and
-  -- present it. 1 pixel becomes a 5x5 square.
-  copy renderer target
-    (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
-    (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
-
-  -- In addition, a 48x60 zone is magnified 20x and rendered on the right half
-  -- of the screen.
-  when (sMagnified st) $
+  -- Render the previous render target to the default render target.
+  -- When magnified, a 96x60 zone is magnified 20x and rendered on the screen.
+  if (sMagnified st)
+  then do
     copy renderer target
-      (Just (SDL.Rectangle (sMagnifiedPos st) (V2 48 60)))
-      (Just (SDL.Rectangle (P (V2 960 0)) (V2 960 1200)))
+      (Just (SDL.Rectangle (sMagnifiedPos st) (V2 96 60)))
+      (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+  else do
+  -- Otherwise, the whole previous target is rendered. 1 pixel becomes a 5x5
+  -- square.
+    copy renderer target
+      (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+      (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
 
   present renderer
 
@@ -218,7 +219,7 @@ hatToDelta _ = V2 0 0
 moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
   where
     x1 = x + dx
-    x2 = if x1 > 384 - 48 then 384 - 48 else x1
+    x2 = if x1 > 384 - 96 then 384 - 96 else x1
     x3 = if x2 < 0 then 0 else x2
     y1 = y + dy
     y2 = if y1 > 240 - 60 then 240 - 60 else y1

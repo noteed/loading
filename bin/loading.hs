@@ -149,7 +149,7 @@ processEvent st event = case eventPayload event of
   MouseButtonEvent (MouseButtonEventData {..}) ->
     if mouseButtonEventButton == ButtonLeft &&
        mouseButtonEventMotion == Pressed
-    then st { sPoints = int32ToCInt mouseButtonEventPos : sPoints st }
+    then st { sCursor = int32ToCInt mouseButtonEventPos }
     else st
 
 

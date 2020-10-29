@@ -31,12 +31,19 @@ $ scripts/ghcid.sh
 - The rendering is done with a low resolution, similar to old games.
 - Some basic shapes (point, line, triangle) are rendered.
 - Some commands can be done with a gamepad.
-- Left mouse button clicks add points.
+- Left mouse button clicks change the cursor location.
 - Pressing `q` quits the application.
 - Pressing `e` enables/disables logging polled events.
 - Pressing `m` or right shoulder button show/hide a magnified zone of the
   screen.
-- Pressing the arrow keys or the d-pad move the magnified zone selection.
+- Pressing the arrow keys or the d-pad move the magnified zone selection, when
+  magnified.
+- Pressing the arrow keys move the cursro, when not magnified.
+- Pressing `space` draw a point where the cursor is.
+
+There is clearly a memory leak: watching the process in `htop` shows the memory
+usage grow quickly. I've deleted most of the code and the same behavior
+continues...
 
 
 ## Notes

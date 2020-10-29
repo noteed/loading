@@ -38,15 +38,14 @@ $ make run
 - The rendering is done with a low resolution, similar to old games.
 - Some basic shapes (point, line, triangle) are rendered.
 - Some commands can be done with a gamepad.
-- Left mouse button clicks change the cursor location.
+- Left mouse button clicks change the cursor location, and sets the magnified
+  zone location.
 - Pressing `q` quits the application.
 - Pressing `e` enables/disables logging polled events.
 - Pressing `m` or right shoulder button show/hide a magnified zone of the
   screen.
-- Pressing the arrow keys or the d-pad move the magnified zone selection, when
-  magnified.
-- Pressing the arrow keys move the cursro, when not magnified.
-- Pressing `space` draw a point where the cursor is.
+- Pressing the arrow keys or d-pad move the cursor.
+- Pressing `space` or "A" button draw a point where the cursor is.
 
 There is clearly a memory leak: watching the process in `htop` shows the memory
 usage grow quickly. I've deleted most of the code and the same behavior

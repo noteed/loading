@@ -150,7 +150,10 @@ processEvent st event = case eventPayload event of
   MouseButtonEvent (MouseButtonEventData {..}) ->
     if mouseButtonEventButton == ButtonLeft &&
        mouseButtonEventMotion == Pressed
-    then st { sCursor = int32ToCInt mouseButtonEventPos }
+    then st { sCursor = int32ToCInt mouseButtonEventPos
+            , sMagnifiedPos = if sMagnified st then sMagnifiedPos st
+                                               else int32ToCInt mouseButtonEventPos
+            }
     else st
 
 
@@ -169,14 +172,9 @@ processEvent st event = case eventPayload event of
                               |
     keyboardEventKeyMotion keyboardEvent == Pressed ->
     let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent)
-        magpos = if sMagnified st
-                 then moveMagnifyingZone (sMagnifiedPos st) (arrowToDelta arrow)
-                 else sMagnifiedPos st
-        curpos = if not (sMagnified st)
-                 then moveCursor (sCursor st) (arrowToDelta' arrow)
-                 else sCursor st
+        curpos = moveCursor (sCursor st) (arrowToDelta' arrow)
     in
-    st { sMagnifiedPos = magpos, sCursor = curpos }
+    st { sCursor = curpos }
 
   JoyButtonEvent (JoyButtonEventData {..}) |
     joyButtonEventWhich == 0 &&
@@ -185,9 +183,15 @@ processEvent st event = case eventPayload event of
     -- Right shoulder button.
     st { sMagnified = not (sMagnified st) }
 
+  JoyButtonEvent (JoyButtonEventData {..}) |
+    joyButtonEventWhich == 0 &&
+    joyButtonEventButton == 0 &&
+    joyButtonEventState == JoyButtonPressed ->
+    -- "A" button.
+    st { sPoints = sCursor st : sPoints st }
+
   JoyHatEvent (JoyHatEventData {..}) | joyHatEventWhich == 0 ->
-    st { sMagnifiedPos =
-         moveMagnifyingZone (sMagnifiedPos st) (hatToDelta joyHatEventValue) }
+    st { sCursor = moveCursor (sCursor st) (hatToDelta joyHatEventValue) }
 
   _ -> st
 
@@ -210,10 +214,10 @@ arrowToDelta' KeycodeRight = V2 1 0
 arrowToDelta' KeycodeDown = V2 0 1
 arrowToDelta' _ = V2 0 0
 
-hatToDelta HatLeft = V2 (-12) 0
-hatToDelta HatUp = V2 0 (-15)
-hatToDelta HatRight = V2 12 0
-hatToDelta HatDown = V2 0 15
+hatToDelta HatLeft = V2 (-1) 0
+hatToDelta HatUp = V2 0 (-1)
+hatToDelta HatRight = V2 1 0
+hatToDelta HatDown = V2 0 1
 hatToDelta _ = V2 0 0
 
 moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)

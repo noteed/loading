@@ -25,6 +25,13 @@ To validate the code during developement, use `ghcid` by running:
 $ scripts/ghcid.sh
 ```
 
+As a convenience, it is possible to run the executable, ensuring it is built
+only if necessary:
+
+```
+$ make run
+```
+
 
 ## Current status
 

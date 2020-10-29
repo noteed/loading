@@ -16,7 +16,7 @@ key to be pressed, then exits.
 To build the binary at `bin/loading`, simply run
 
 ```
-$ scripts/build.sh
+$ make
 ```
 
 To validate the code during developement, use `ghcid` by running:

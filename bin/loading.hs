@@ -220,21 +220,19 @@ hatToDelta HatRight = V2 1 0
 hatToDelta HatDown = V2 0 1
 hatToDelta _ = V2 0 0
 
-moveMagnifyingZone (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
+moveMagnifyingZone p v = P (V2 x3 y3)
   where
-    x1 = x + dx
+    P (V2 x1 y1) = p .+^ v
     x2 = if x1 > 384 - 96 then 384 - 96 else x1
     x3 = if x2 < 0 then 0 else x2
-    y1 = y + dy
     y2 = if y1 > 240 - 60 then 240 - 60 else y1
     y3 = if y2 < 0 then 0 else y2
 
-moveCursor (P (V2 x y)) (V2 dx dy) = P (V2 x3 y3)
+moveCursor p v = P (V2 x3 y3)
   where
-    x1 = x + dx
+    P (V2 x1 y1) = p .+^ v
     x2 = if x1 > 384 then 384 else x1
     x3 = if x2 < 0 then 0 else x2
-    y1 = y + dy
     y2 = if y1 > 240 then 240 else y1
     y3 = if y2 < 0 then 0 else y2
 

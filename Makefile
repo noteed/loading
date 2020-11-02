@@ -4,3 +4,7 @@ bin/loading: bin/loading.hs scripts/build.sh
 .PHONY: run
 run: bin/loading
 	bin/loading
+
+.PHONY: view
+view: screenshot.png
+	feh --borderless --force-aliasing -g 1920x1200+320+120 --zoom fill $<

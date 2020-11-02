@@ -50,10 +50,10 @@ $ make run
 When quitting, a screenshot is captured as `screenshot.png`.
 
 A nice way to view the screenshot that mimics the behavior of the SDL window
-under my xmonad configration is using the following `feh` call:
+under my xmonad configration is using the following helper that uses `feh`:
 
 ```
-$ feh --borderless --force-aliasing --geometry 1920x1200+320+120 --zoom fill screenshot.png
+$ make view
 ```
 
 This creates a floating, centered window with the 384x240 image scaled,

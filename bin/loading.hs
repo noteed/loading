@@ -5,14 +5,20 @@
 module Main where
 
 import Control.Monad (unless, when)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Int (Int32)
 import Data.List (foldl')
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Foreign.C.String (CString, withCString)
 import Foreign.C.Types (CInt)
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (peek)
 import Linear (V4(..))
 import SDL
+import qualified SDL.Internal.Types as Types
 import SDL.Primitive (fillTriangle)
+import qualified SDL.Raw as Raw
 
 
 --------------------------------------------------------------------------------
@@ -94,6 +100,12 @@ loop target renderer st = do
     mapM_ print events
 
   let st' = foldl' processEvent st events
+  -- Save a screen capture when exiting.
+  when (sQuit st') (do
+    putStrLn "Saving screenshot to screenshot.png..."
+    rendererRenderTarget renderer $= (Just target)
+    writeRendererToPNG renderer "screenshot.png"
+    rendererRenderTarget renderer $= Nothing)
   unless (sQuit st') (loop target renderer st')
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
@@ -247,3 +259,24 @@ moveCursor p v = P (V2 x3 y3)
 int32ToCInt :: Point V2 Int32 -> Point V2 CInt
 int32ToCInt (P (V2 x y)) =
   P (V2 (fromIntegral x `div` 5) (fromIntegral y `div` 5))
+
+
+--------------------------------------------------------------------------------
+writeRendererToPNG :: Renderer -> FilePath -> IO ()
+writeRendererToPNG (Types.Renderer r) fn = do
+  surface <- Raw.createRGBSurface 0 384 240 32 0 0 0 0
+  format <- Raw.surfaceFormat <$> peek surface
+  format' <- Raw.pixelFormatFormat <$> peek format
+  pixels <- Raw.surfacePixels <$> peek surface -- TODO lock/unlockSurface
+  Raw.renderReadPixels r nullPtr
+    format'
+    pixels
+    (384 * 4) -- Surface pitch: width x bytes per pixel. This is normally a
+              -- field within the SDL surface but is hidden in the current
+              -- bindings.
+  withCString fn (savePNG surface)
+
+savePNG v1 v2 = liftIO (savePNGFFI v1 v2)
+
+foreign import ccall "SDL_image.h IMG_SavePNG"
+  savePNGFFI :: Ptr Raw.Surface -> CString -> IO ()

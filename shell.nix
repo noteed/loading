@@ -5,6 +5,7 @@
       (pkgs.haskellPackages.ghcWithPackages (hpkgs: [
         hpkgs.sdl2
         hpkgs.sdl2-gfx
+        hpkgs.sdl2-image
       ]))
     ];
 }

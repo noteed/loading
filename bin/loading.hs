@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Control.Concurrent (threadDelay)
 import Control.Monad (unless, when)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Int (Int32)
@@ -20,6 +21,15 @@ import qualified SDL.Internal.Types as Types
 import SDL.Primitive (fillTriangle)
 import qualified SDL.Raw as Raw
 import System.Environment (getArgs)
+
+
+--------------------------------------------------------------------------------
+-- | We want a fixed 60 frames per second. Since graphics are low-res, maybe
+-- this should be 30...
+fps = 60
+
+-- | Duration of a frame, in milliseconds.
+frameDuration = 1000 `div` 60
 
 
 --------------------------------------------------------------------------------
@@ -122,6 +132,7 @@ initialState = State
 --------------------------------------------------------------------------------
 loop :: Texture -> Renderer -> State -> IO ()
 loop target renderer st = do
+  t1 <- ticks
   events <- pollEvents
 
   withLowResolution st target renderer draw
@@ -136,7 +147,13 @@ loop target renderer st = do
     rendererRenderTarget renderer $= (Just target)
     writeRendererToPNG renderer "screenshot.png"
     rendererRenderTarget renderer $= Nothing)
-  unless (sQuit st') (loop target renderer st')
+
+  t2 <- ticks
+  unless (sQuit st') (do
+    -- Convert from milliseconds to microseconds.
+    -- I guess this can drift over time. TODO Something more solid.
+    threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
+    loop target renderer st')
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another

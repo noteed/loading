@@ -48,6 +48,9 @@ $ make run
 - Pressing `space` or "A" button draw a point where the cursor is.
 - `loading headless` generates directly a screenshot, without actually opening
   an interactive window.
+- A crude fixed frame rate is implemented. This limits CPU usage to 2% (window
+  on a hidden workspace) or 5% (window visible) on my T480, instead of 99%
+  (hidden) or 50% (visible).
 
 When quitting, a screenshot is captured as `screenshot.png`.
 

@@ -46,6 +46,8 @@ $ make run
   screen.
 - Pressing the arrow keys or d-pad move the cursor.
 - Pressing `space` or "A" button draw a point where the cursor is.
+- `loading headless` generates directly a screenshot, without actually opening
+  an interactive window.
 
 When quitting, a screenshot is captured as `screenshot.png`.
 

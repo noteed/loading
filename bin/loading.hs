@@ -19,12 +19,42 @@ import SDL
 import qualified SDL.Internal.Types as Types
 import SDL.Primitive (fillTriangle)
 import qualified SDL.Raw as Raw
+import System.Environment (getArgs)
 
 
 --------------------------------------------------------------------------------
 main :: IO ()
 main = do
   putStrLn "Loading..."
+  args <- getArgs
+  case args of
+    ["headless"] -> headless
+    _ -> run
+
+-- | Call `draw` once using `initialState`, then save a screenshot.
+headless = do
+  initializeAll
+  -- It is possible to use a hidden window with
+  --
+  --     window <- createWindow "Loading..." defaultWindow
+  --       { windowInitialSize = V2 384 240, windowVisible = False }
+  --
+  -- then a renderer as usual, but it seems the rendering is not done unless the
+  -- window is showed. Instead for headless rendering, we use
+  -- createSoftwareRenderer.
+  surface <- createRGBSurface (V2 384 240) RGBA8888
+  renderer <- createSoftwareRenderer surface
+
+  draw initialState renderer
+  present renderer
+
+  putStrLn "Saving screenshot to screenshot.png..."
+  writeRendererToPNG renderer "screenshot.png"
+
+  destroyRenderer renderer
+  putStrLn "Done."
+
+run = do
   initializeAll
   window <- createWindow "Loading..." defaultWindow
     { windowInitialSize = V2 1920 1200 }
@@ -265,9 +295,10 @@ int32ToCInt (P (V2 x y)) =
 writeRendererToPNG :: Renderer -> FilePath -> IO ()
 writeRendererToPNG (Types.Renderer r) fn = do
   surface <- Raw.createRGBSurface 0 384 240 32 0 0 0 0
+  Raw.lockSurface surface
   format <- Raw.surfaceFormat <$> peek surface
   format' <- Raw.pixelFormatFormat <$> peek format
-  pixels <- Raw.surfacePixels <$> peek surface -- TODO lock/unlockSurface
+  pixels <- Raw.surfacePixels <$> peek surface
   Raw.renderReadPixels r nullPtr
     format'
     pixels
@@ -275,6 +306,7 @@ writeRendererToPNG (Types.Renderer r) fn = do
               -- field within the SDL surface but is hidden in the current
               -- bindings.
   withCString fn (savePNG surface)
+  Raw.unlockSurface surface
 
 savePNG v1 v2 = liftIO (savePNGFFI v1 v2)
 

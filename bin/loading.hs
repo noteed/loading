@@ -24,6 +24,10 @@ main = do
     { windowInitialSize = V2 1920 1200 }
   renderer <- createRenderer window (-1) defaultRenderer
 
+  -- Create a render target with a low resolution and big pixels. See
+  -- withLowResolution for details.
+  target <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+
   -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
   -- below will reports gamepad events.
   n <- numJoysticks
@@ -36,9 +40,11 @@ main = do
     else return Nothing
 
   putStrLn "Press `q` to quit."
-  loop renderer initialState
+  loop target renderer initialState
 
   maybe (return ()) closeJoystick gamepad
+  destroyTexture target
+  destroyRenderer renderer
   putStrLn "Bye."
 
   -- -1 means "initialize the first rendering driver supporting the requested
@@ -78,30 +84,24 @@ initialState = State
 
 
 --------------------------------------------------------------------------------
-loop :: Renderer -> State -> IO ()
-loop renderer st = do
+loop :: Texture -> Renderer -> State -> IO ()
+loop target renderer st = do
   events <- pollEvents
 
-  withLowResolution st renderer draw
+  withLowResolution st target renderer draw
 
   when (sShowEvents st) $
     mapM_ print events
 
   let st' = foldl' processEvent st events
-  unless (sQuit st') (loop renderer st')
+  unless (sQuit st') (loop target renderer st')
 
-withLowResolution st renderer drawingFunction = do
-  -- Create a render target with a low resolution and big pixels, and set it as
-  -- the current render target. Instead of 320x240, I use something similar but
-  -- with a 1.6 aspect ratio (instead of 1.33). Another way is to use
-  -- rendererLogicalSize but unfortunately, this doesn't affect sdl2-gfx's
-  -- `triangle` routine, nor even the normal `drawLine` routine.
-  target <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+-- | Use a low resolution texture as a rendering target. Instead of 320x240, I
+-- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another
+-- way is to use rendererLogicalSize but unfortunately, this doesn't affect
+-- sdl2-gfx's `triangle` routine, nor even the normal `drawLine` routine.
+withLowResolution st target renderer drawingFunction = do
   rendererRenderTarget renderer $= (Just target)
-
-  -- Clear to blue.
-  rendererDrawColor renderer $= V4 0 0 204 255
-  clear renderer
 
   drawingFunction st renderer
 
@@ -125,6 +125,10 @@ withLowResolution st renderer drawingFunction = do
   present renderer
 
 draw st renderer = do
+  -- Clear to blue.
+  rendererDrawColor renderer $= V4 0 0 204 255
+  clear renderer
+
   -- How to draw a point.
   rendererDrawColor renderer $= V4 255 255 255 255
   drawPoint renderer (sCursor st)

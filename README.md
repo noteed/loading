@@ -47,10 +47,6 @@ $ make run
 - Pressing the arrow keys or d-pad move the cursor.
 - Pressing `space` or "A" button draw a point where the cursor is.
 
-There is clearly a memory leak: watching the process in `htop` shows the memory
-usage grow quickly. I've deleted most of the code and the same behavior
-continues...
-
 
 ## Notes
 

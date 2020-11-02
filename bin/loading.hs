@@ -14,6 +14,12 @@ import Linear (V4(..))
 import SDL
 import SDL.Primitive (fillTriangle)
 
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Foreign.C.String (CString, withCString)
+import Foreign.Ptr (Ptr)
+import qualified SDL.Raw as Raw
+import qualified SDL.Video.Renderer as SDLRenderer
+
 
 --------------------------------------------------------------------------------
 main :: IO ()
@@ -247,3 +253,22 @@ moveCursor p v = P (V2 x3 y3)
 int32ToCInt :: Point V2 Int32 -> Point V2 CInt
 int32ToCInt (P (V2 x y)) =
   P (V2 (fromIntegral x `div` 5) (fromIntegral y `div` 5))
+
+
+-- The sdl2-image doesn't include this.
+-- TODO Contribute it back, although here it is written in the style of sdl2.
+-- (sdl2-image has its own way, using .chs and a .Helper file.)
+savePNG :: MonadIO m => Surface -> FilePath -> m ()
+savePNG (SDLRenderer.Surface s _) path =
+  liftIO $ withCString path (rawSavePNG s)
+
+rawSavePNG v1 v2 = liftIO $ savePNGFFI v1 v2
+
+foreign import ccall "SDL_image.h IMG_SavePNG"
+  savePNGFFI :: Ptr Raw.Surface -> CString -> IO ()
+
+-- Note: this seems to compile with:
+-- ghc --make bin/loading.hs \
+--   -lSDL2_image \
+--   -I/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/include/SDL2/ \
+--   -L/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/lib

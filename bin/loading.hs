@@ -5,20 +5,20 @@
 module Main where
 
 import Control.Monad (unless, when)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Int (Int32)
 import Data.List (foldl')
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Foreign.C.String (CString, withCString)
 import Foreign.C.Types (CInt)
+import Foreign.Ptr (Ptr, nullPtr)
+import Foreign.Storable (peek)
 import Linear (V4(..))
 import SDL
+import qualified SDL.Internal.Types as Types
 import SDL.Primitive (fillTriangle)
-
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Foreign.C.String (CString, withCString)
-import Foreign.Ptr (Ptr)
 import qualified SDL.Raw as Raw
-import qualified SDL.Video.Renderer as SDLRenderer
 
 
 --------------------------------------------------------------------------------
@@ -100,6 +100,12 @@ loop target renderer st = do
     mapM_ print events
 
   let st' = foldl' processEvent st events
+  -- Save a screen capture when exiting.
+  when (sQuit st') (do
+    putStrLn "Saving screenshot to screenshot.png..."
+    rendererRenderTarget renderer $= (Just target)
+    writeRendererToPNG renderer "screenshot.png"
+    rendererRenderTarget renderer $= Nothing)
   unless (sQuit st') (loop target renderer st')
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
@@ -255,20 +261,22 @@ int32ToCInt (P (V2 x y)) =
   P (V2 (fromIntegral x `div` 5) (fromIntegral y `div` 5))
 
 
--- The sdl2-image doesn't include this.
--- TODO Contribute it back, although here it is written in the style of sdl2.
--- (sdl2-image has its own way, using .chs and a .Helper file.)
-savePNG :: MonadIO m => Surface -> FilePath -> m ()
-savePNG (SDLRenderer.Surface s _) path =
-  liftIO $ withCString path (rawSavePNG s)
+--------------------------------------------------------------------------------
+writeRendererToPNG :: Renderer -> FilePath -> IO ()
+writeRendererToPNG (Types.Renderer r) fn = do
+  surface <- Raw.createRGBSurface 0 384 240 32 0 0 0 0
+  format <- Raw.surfaceFormat <$> peek surface
+  format' <- Raw.pixelFormatFormat <$> peek format
+  pixels <- Raw.surfacePixels <$> peek surface -- TODO lock/unlockSurface
+  Raw.renderReadPixels r nullPtr
+    format'
+    pixels
+    (384 * 4) -- Surface pitch: width x bytes per pixel. This is normally a
+              -- field within the SDL surface but is hidden in the current
+              -- bindings.
+  withCString fn (savePNG surface)
 
-rawSavePNG v1 v2 = liftIO $ savePNGFFI v1 v2
+savePNG v1 v2 = liftIO (savePNGFFI v1 v2)
 
 foreign import ccall "SDL_image.h IMG_SavePNG"
   savePNGFFI :: Ptr Raw.Surface -> CString -> IO ()
-
--- Note: this seems to compile with:
--- ghc --make bin/loading.hs \
---   -lSDL2_image \
---   -I/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/include/SDL2/ \
---   -L/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/lib

@@ -47,6 +47,8 @@ $ make run
 - Pressing the arrow keys or d-pad move the cursor.
 - Pressing `space` or "A" button draw a point where the cursor is.
 
+When quitting, a screenshot is captured as `screenshot.png`.
+
 
 ## Notes
 
@@ -71,3 +73,6 @@ checked `dmesg`:
 ```
 
 This looked good and I confirmed it was working with `jstest /dev/input/js0`.
+
+Note: the build scripts hard-code paths into the Nix store to build against the
+sdl2 image library. This should be fixed.

@@ -5,5 +5,5 @@
 # TODO I guess I have to use Cabal to properly set those ?
 ghc --make bin/loading.hs \
   -lSDL2_image \
-  -I/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/include/SDL2/ \
-  -L/nix/store/3n6dpjyw6i3g4pg345zxv0x5wczwg1di-SDL2_image-2.0.5/lib
+  -I/nix/store/yzhqcvnhrbr6h1cdnw7pdb37jxg5cl34-SDL2_image-2.0.5/include/SDL2/ \
+  -L/nix/store/yzhqcvnhrbr6h1cdnw7pdb37jxg5cl34-SDL2_image-2.0.5/lib

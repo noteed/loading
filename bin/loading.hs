@@ -29,7 +29,7 @@ import System.Environment (getArgs)
 fps = 60
 
 -- | Duration of a frame, in milliseconds.
-frameDuration = 1000 `div` 60
+frameDuration = 1000 `div` fps
 
 
 --------------------------------------------------------------------------------
@@ -41,6 +41,8 @@ main = do
     ["headless"] -> headless
     _ -> run
 
+
+--------------------------------------------------------------------------------
 -- | Call `draw` once using `initialState`, then save a screenshot.
 headless = do
   initializeAll
@@ -64,6 +66,8 @@ headless = do
   destroyRenderer renderer
   putStrLn "Done."
 
+
+--------------------------------------------------------------------------------
 run = do
   initializeAll
   window <- createWindow "Loading..." defaultWindow
@@ -104,6 +108,7 @@ logGamepad JoystickDevice {..} =
   "Gamepad #" ++ show joystickDeviceId ++ " is " ++
     T.unpack joystickDeviceName ++ "."
 
+
 --------------------------------------------------------------------------------
 data State = State
   { sQuit :: Bool
@@ -119,6 +124,7 @@ data State = State
     -- ^ Points to draw. They are added by left-clicking.
   }
 
+initialState :: State
 initialState = State
   { sQuit = False
   , sShowEvents = False
@@ -149,11 +155,11 @@ loop target renderer st = do
     rendererRenderTarget renderer $= Nothing)
 
   t2 <- ticks
-  unless (sQuit st') (do
+  unless (sQuit st') $ do
     -- Convert from milliseconds to microseconds.
     -- I guess this can drift over time. TODO Something more solid.
     threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
-    loop target renderer st')
+    loop target renderer st'
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another
@@ -218,7 +224,6 @@ processEvent st event = case eventPayload event of
                                                else int32ToCInt mouseButtonEventPos
             }
     else st
-
 
   KeyboardEvent keyboardEvent |
     keyboardEventKeyMotion keyboardEvent == Pressed &&

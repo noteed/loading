@@ -4,23 +4,31 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import Control.Concurrent (threadDelay)
-import Control.Monad (unless, when)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Int (Int32)
-import Data.List (foldl')
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Foreign.C.String (CString, withCString)
-import Foreign.C.Types (CInt)
-import Foreign.Ptr (Ptr, nullPtr)
-import Foreign.Storable (peek)
-import Linear (V4(..))
-import SDL
-import qualified SDL.Internal.Types as Types
-import SDL.Primitive (fillTriangle)
-import qualified SDL.Raw as Raw
-import System.Environment (getArgs)
+import           Control.Concurrent             ( threadDelay )
+import           Control.Monad                  ( unless
+                                                , when
+                                                )
+import           Control.Monad.IO.Class         ( MonadIO
+                                                , liftIO
+                                                )
+import           Data.Int                       ( Int32 )
+import           Data.List                      ( foldl' )
+import qualified Data.Text                     as T
+import qualified Data.Vector                   as V
+import           Foreign.C.String               ( CString
+                                                , withCString
+                                                )
+import           Foreign.C.Types                ( CInt )
+import           Foreign.Ptr                    ( Ptr
+                                                , nullPtr
+                                                )
+import           Foreign.Storable               ( peek )
+import           Linear                         ( V4(..) )
+import           SDL
+import qualified SDL.Internal.Types            as Types
+import           SDL.Primitive                  ( fillTriangle )
+import qualified SDL.Raw                       as Raw
+import           System.Environment             ( getArgs )
 
 
 --------------------------------------------------------------------------------
@@ -39,7 +47,7 @@ main = do
   args <- getArgs
   case args of
     ["headless"] -> headless
-    _ -> run
+    _            -> run
 
 
 --------------------------------------------------------------------------------
@@ -54,7 +62,7 @@ headless = do
   -- then a renderer as usual, but it seems the rendering is not done unless the
   -- window is showed. Instead for headless rendering, we use
   -- createSoftwareRenderer.
-  surface <- createRGBSurface (V2 384 240) RGBA8888
+  surface  <- createRGBSurface (V2 384 240) RGBA8888
   renderer <- createSoftwareRenderer surface
 
   draw initialState renderer
@@ -70,22 +78,21 @@ headless = do
 --------------------------------------------------------------------------------
 run = do
   initializeAll
-  window <- createWindow "Loading..." defaultWindow
-    { windowInitialSize = V2 1920 1200 }
+  window <- createWindow "Loading..."
+                         defaultWindow { windowInitialSize = V2 1920 1200 }
   renderer <- createRenderer window (-1) defaultRenderer
 
   -- Create a render target with a low resolution and big pixels. See
   -- withLowResolution for details.
-  target <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+  target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
 
   -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
   -- below will reports gamepad events.
-  n <- numJoysticks
+  n        <- numJoysticks
   putStrLn ("Detected " ++ show n ++ " gamepads.")
   gamepads <- availableJoysticks
   mapM_ (putStrLn . logGamepad) gamepads
-  gamepad <-
-    if not (V.null gamepads)
+  gamepad <- if not (V.null gamepads)
     then Just <$> openJoystick (V.head gamepads)
     else return Nothing
 
@@ -105,8 +112,11 @@ run = do
   -- { windowMode = FullscreenDesktop } but this didn't work...
 
 logGamepad JoystickDevice {..} =
-  "Gamepad #" ++ show joystickDeviceId ++ " is " ++
-    T.unpack joystickDeviceName ++ "."
+  "Gamepad #"
+    ++ show joystickDeviceId
+    ++ " is "
+    ++ T.unpack joystickDeviceName
+    ++ "."
 
 
 --------------------------------------------------------------------------------
@@ -125,34 +135,32 @@ data State = State
   }
 
 initialState :: State
-initialState = State
-  { sQuit = False
-  , sShowEvents = False
-  , sMagnifiedPos = P (V2 0 0)
-  , sMagnified = False
-  , sCursor = P (V2 (384 `div` 2) ( 240 `div` 2))
-  , sPoints = []
-  }
+initialState = State { sQuit         = False
+                     , sShowEvents   = False
+                     , sMagnifiedPos = P (V2 0 0)
+                     , sMagnified    = False
+                     , sCursor       = P (V2 (384 `div` 2) (240 `div` 2))
+                     , sPoints       = []
+                     }
 
 
 --------------------------------------------------------------------------------
 loop :: Texture -> Renderer -> State -> IO ()
 loop target renderer st = do
-  t1 <- ticks
+  t1     <- ticks
   events <- pollEvents
 
   withLowResolution st target renderer draw
 
-  when (sShowEvents st) $
-    mapM_ print events
+  when (sShowEvents st) $ mapM_ print events
 
   let st' = foldl' processEvent st events
   -- Save a screen capture when exiting.
-  when (sQuit st') (do
+  when (sQuit st') $ do
     putStrLn "Saving screenshot to screenshot.png..."
     rendererRenderTarget renderer $= (Just target)
     writeRendererToPNG renderer "screenshot.png"
-    rendererRenderTarget renderer $= Nothing)
+    rendererRenderTarget renderer $= Nothing
 
   t2 <- ticks
   unless (sQuit st') $ do
@@ -176,16 +184,18 @@ withLowResolution st target renderer drawingFunction = do
   -- Render the previous render target to the default render target.
   -- When magnified, a 96x60 zone is magnified 20x and rendered on the screen.
   if (sMagnified st)
-  then do
-    copy renderer target
-      (Just (SDL.Rectangle (sMagnifiedPos st) (V2 96 60)))
-      (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
-  else do
+    then do
+      copy renderer
+           target
+           (Just (SDL.Rectangle (sMagnifiedPos st) (V2 96 60)))
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+    else do
   -- Otherwise, the whole previous target is rendered. 1 pixel becomes a 5x5
   -- square.
-    copy renderer target
-      (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
-      (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+      copy renderer
+           target
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
 
   present renderer
 
@@ -215,94 +225,106 @@ draw st renderer = do
 --------------------------------------------------------------------------------
 processEvent st event | isQPressed event = st { sQuit = True }
 
-processEvent st event = case eventPayload event of
+processEvent st event                    = case eventPayload event of
   MouseButtonEvent (MouseButtonEventData {..}) ->
-    if mouseButtonEventButton == ButtonLeft &&
-       mouseButtonEventMotion == Pressed
-    then st { sCursor = int32ToCInt mouseButtonEventPos
-            , sMagnifiedPos = if sMagnified st then sMagnifiedPos st
-                                               else int32ToCInt mouseButtonEventPos
-            }
-    else st
+    if mouseButtonEventButton == ButtonLeft && mouseButtonEventMotion == Pressed
+      then st
+        { sCursor       = int32ToCInt mouseButtonEventPos
+        , sMagnifiedPos = if sMagnified st
+                            then sMagnifiedPos st
+                            else int32ToCInt mouseButtonEventPos
+        }
+      else st
 
-  KeyboardEvent keyboardEvent |
-    keyboardEventKeyMotion keyboardEvent == Pressed &&
-    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeE ->
-    st { sShowEvents = not (sShowEvents st) }
-                              |
-    keyboardEventKeyMotion keyboardEvent == Pressed &&
-    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeM ->
-    st { sMagnified = not (sMagnified st) }
-                              |
-    keyboardEventKeyMotion keyboardEvent == Pressed &&
-    keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeSpace ->
-    st { sPoints = sCursor st : sPoints st }
-                              |
-    keyboardEventKeyMotion keyboardEvent == Pressed ->
-    let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent)
-        curpos = moveCursor (sCursor st) (arrowToDelta' arrow)
-    in
-    st { sCursor = curpos }
+  KeyboardEvent keyboardEvent
+    | keyboardEventKeyMotion keyboardEvent
+      == Pressed
+      && keysymKeycode (keyboardEventKeysym keyboardEvent)
+      == KeycodeE
+    -> st { sShowEvents = not (sShowEvents st) }
+    | keyboardEventKeyMotion keyboardEvent
+      == Pressed
+      && keysymKeycode (keyboardEventKeysym keyboardEvent)
+      == KeycodeM
+    -> st { sMagnified = not (sMagnified st) }
+    | keyboardEventKeyMotion keyboardEvent
+      == Pressed
+      && keysymKeycode (keyboardEventKeysym keyboardEvent)
+      == KeycodeSpace
+    -> st { sPoints = sCursor st : sPoints st }
+    | keyboardEventKeyMotion keyboardEvent == Pressed
+    -> let arrow  = keysymKeycode (keyboardEventKeysym keyboardEvent)
+           curpos = moveCursor (sCursor st) (arrowToDelta' arrow)
+       in  st { sCursor = curpos }
 
-  JoyButtonEvent (JoyButtonEventData {..}) |
-    joyButtonEventWhich == 0 &&
-    joyButtonEventButton == 5 &&
-    joyButtonEventState == JoyButtonPressed ->
+  JoyButtonEvent (JoyButtonEventData {..})
+    | joyButtonEventWhich
+      == 0
+      && joyButtonEventButton
+      == 5
+      && joyButtonEventState
+      == JoyButtonPressed
+    ->
     -- Right shoulder button.
-    st { sMagnified = not (sMagnified st) }
+       st { sMagnified = not (sMagnified st) }
 
-  JoyButtonEvent (JoyButtonEventData {..}) |
-    joyButtonEventWhich == 0 &&
-    joyButtonEventButton == 0 &&
-    joyButtonEventState == JoyButtonPressed ->
+  JoyButtonEvent (JoyButtonEventData {..})
+    | joyButtonEventWhich
+      == 0
+      && joyButtonEventButton
+      == 0
+      && joyButtonEventState
+      == JoyButtonPressed
+    ->
     -- "A" button.
-    st { sPoints = sCursor st : sPoints st }
+       st { sPoints = sCursor st : sPoints st }
 
   JoyHatEvent (JoyHatEventData {..}) | joyHatEventWhich == 0 ->
     st { sCursor = moveCursor (sCursor st) (hatToDelta joyHatEventValue) }
 
   _ -> st
 
-isQPressed event =
-  case eventPayload event of
-    KeyboardEvent keyboardEvent ->
-      keyboardEventKeyMotion keyboardEvent == Pressed &&
-      keysymKeycode (keyboardEventKeysym keyboardEvent) == KeycodeQ
-    _ -> False
+isQPressed event = case eventPayload event of
+  KeyboardEvent keyboardEvent ->
+    keyboardEventKeyMotion keyboardEvent
+      == Pressed
+      && keysymKeycode (keyboardEventKeysym keyboardEvent)
+      == KeycodeQ
+  _ -> False
 
-arrowToDelta KeycodeLeft = V2 (-12) 0
-arrowToDelta KeycodeUp = V2 0 (-15)
+arrowToDelta KeycodeLeft  = V2 (-12) 0
+arrowToDelta KeycodeUp    = V2 0 (-15)
 arrowToDelta KeycodeRight = V2 12 0
-arrowToDelta KeycodeDown = V2 0 15
-arrowToDelta _ = V2 0 0
+arrowToDelta KeycodeDown  = V2 0 15
+arrowToDelta _            = V2 0 0
 
-arrowToDelta' KeycodeLeft = V2 (-1) 0
-arrowToDelta' KeycodeUp = V2 0 (-1)
+arrowToDelta' KeycodeLeft  = V2 (-1) 0
+arrowToDelta' KeycodeUp    = V2 0 (-1)
 arrowToDelta' KeycodeRight = V2 1 0
-arrowToDelta' KeycodeDown = V2 0 1
-arrowToDelta' _ = V2 0 0
+arrowToDelta' KeycodeDown  = V2 0 1
+arrowToDelta' _            = V2 0 0
 
-hatToDelta HatLeft = V2 (-1) 0
-hatToDelta HatUp = V2 0 (-1)
+hatToDelta HatLeft  = V2 (-1) 0
+hatToDelta HatUp    = V2 0 (-1)
 hatToDelta HatRight = V2 1 0
-hatToDelta HatDown = V2 0 1
-hatToDelta _ = V2 0 0
+hatToDelta HatDown  = V2 0 1
+hatToDelta _        = V2 0 0
 
 moveMagnifyingZone p v = P (V2 x3 y3)
-  where
-    P (V2 x1 y1) = p .+^ v
-    x2 = if x1 > 384 - 96 then 384 - 96 else x1
-    x3 = if x2 < 0 then 0 else x2
-    y2 = if y1 > 240 - 60 then 240 - 60 else y1
-    y3 = if y2 < 0 then 0 else y2
+ where
+  P (V2 x1 y1) = p .+^ v
+  x2           = if x1 > 384 - 96 then 384 - 96 else x1
+  x3           = if x2 < 0 then 0 else x2
+  y2           = if y1 > 240 - 60 then 240 - 60 else y1
+  y3           = if y2 < 0 then 0 else y2
 
 moveCursor p v = P (V2 x3 y3)
-  where
-    P (V2 x1 y1) = p .+^ v
-    x2 = if x1 > 384 then 384 else x1
-    x3 = if x2 < 0 then 0 else x2
-    y2 = if y1 > 240 then 240 else y1
-    y3 = if y2 < 0 then 0 else y2
+ where
+  P (V2 x1 y1) = p .+^ v
+  x2           = if x1 > 384 then 384 else x1
+  x3           = if x2 < 0 then 0 else x2
+  y2           = if y1 > 240 then 240 else y1
+  y3           = if y2 < 0 then 0 else y2
 
 
 --------------------------------------------------------------------------------
@@ -318,13 +340,10 @@ writeRendererToPNG :: Renderer -> FilePath -> IO ()
 writeRendererToPNG (Types.Renderer r) fn = do
   surface <- Raw.createRGBSurface 0 384 240 32 0 0 0 0
   Raw.lockSurface surface
-  format <- Raw.surfaceFormat <$> peek surface
+  format  <- Raw.surfaceFormat <$> peek surface
   format' <- Raw.pixelFormatFormat <$> peek format
-  pixels <- Raw.surfacePixels <$> peek surface
-  Raw.renderReadPixels r nullPtr
-    format'
-    pixels
-    (384 * 4) -- Surface pitch: width x bytes per pixel. This is normally a
+  pixels  <- Raw.surfacePixels <$> peek surface
+  Raw.renderReadPixels r nullPtr format' pixels (384 * 4) -- Surface pitch: width x bytes per pixel. This is normally a
               -- field within the SDL surface but is hidden in the current
               -- bindings.
   withCString fn (savePNG surface)

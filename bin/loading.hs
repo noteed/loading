@@ -55,13 +55,19 @@ parserInfo =
 
 --------------------------------------------------------------------------------
 data Command =
-  Run
+  New
+  | Run
   | Screenshot
 
 parser :: A.Parser Command
 parser =
   A.subparser
     $  A.command
+         "new"
+         ( A.info (pure New <**> A.helper)
+         $ A.progDesc "Create a new 8x8 binary image."
+         )
+    <> A.command
          "run"
          ( A.info (pure Run <**> A.helper)
          $ A.progDesc "Run the interactive program."
@@ -75,14 +81,21 @@ parser =
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run Run        = interactive
-run Screenshot = screenshot
+run New        = new
+run Run        = interactive initialState draw
+run Screenshot = screenshot initialState draw
 
 
 --------------------------------------------------------------------------------
--- | Call `draw` once using `initialState`, then save a screenshot.
-screenshot :: IO ()
-screenshot = do
+new = do
+  undefined
+
+
+--------------------------------------------------------------------------------
+-- | Call a drawing function once, using an initial state, then save a
+-- screenshot.
+screenshot :: State -> (State -> Renderer -> IO ()) -> IO ()
+screenshot initial background = do
   initializeAll
   -- It is possible to use a hidden window with
   --
@@ -95,7 +108,7 @@ screenshot = do
   surface  <- createRGBSurface (V2 384 240) RGBA8888
   renderer <- createSoftwareRenderer surface
 
-  draw initialState renderer
+  background initial renderer
   present renderer
 
   putStrLn "Saving screenshot to screenshot.png..."
@@ -106,8 +119,10 @@ screenshot = do
 
 
 --------------------------------------------------------------------------------
-interactive :: IO ()
-interactive = do
+-- | Run the main interactive game loop, using an initial state and a drawing
+-- function used as a background.
+interactive :: State -> (State -> Renderer -> IO ()) -> IO ()
+interactive initial background = do
   initializeAll
   window <- createWindow "Loading..."
                          defaultWindow { windowInitialSize = V2 1920 1200 }
@@ -128,7 +143,7 @@ interactive = do
     else return Nothing
 
   putStrLn "Press `q` to quit."
-  loop target renderer initialState
+  loop target renderer initial background
 
   maybe (return ()) closeJoystick gamepad
   destroyTexture target
@@ -176,12 +191,12 @@ initialState = State { sQuit         = False
 
 
 --------------------------------------------------------------------------------
-loop :: Texture -> Renderer -> State -> IO ()
-loop target renderer st = do
+loop :: Texture -> Renderer -> State -> (State -> Renderer -> IO ()) -> IO ()
+loop target renderer st background = do
   t1     <- ticks
   events <- pollEvents
 
-  withLowResolution st target renderer draw
+  withLowResolution st target renderer background
 
   when (sShowEvents st) $ mapM_ print events
 
@@ -198,7 +213,7 @@ loop target renderer st = do
     -- Convert from milliseconds to microseconds.
     -- I guess this can drift over time. TODO Something more solid.
     threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
-    loop target renderer st'
+    loop target renderer st' background
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another

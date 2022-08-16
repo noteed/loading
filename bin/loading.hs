@@ -75,12 +75,13 @@ parser =
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run Screenshot = screenshot
 run Run        = interactive
+run Screenshot = screenshot
 
 
 --------------------------------------------------------------------------------
 -- | Call `draw` once using `initialState`, then save a screenshot.
+screenshot :: IO ()
 screenshot = do
   initializeAll
   -- It is possible to use a hidden window with
@@ -105,6 +106,7 @@ screenshot = do
 
 
 --------------------------------------------------------------------------------
+interactive :: IO ()
 interactive = do
   initializeAll
   window <- createWindow "Loading..."
@@ -202,6 +204,8 @@ loop target renderer st = do
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another
 -- way is to use rendererLogicalSize but unfortunately, this doesn't affect
 -- sdl2-gfx's `triangle` routine, nor even the normal `drawLine` routine.
+withLowResolution
+  :: State -> Texture -> Renderer -> (State -> Renderer -> IO ()) -> IO ()
 withLowResolution st target renderer drawingFunction = do
   rendererRenderTarget renderer $= (Just target)
 
@@ -228,6 +232,7 @@ withLowResolution st target renderer drawingFunction = do
 
   present renderer
 
+draw :: State -> Renderer -> IO ()
 draw st renderer = do
   -- Clear to blue.
   rendererDrawColor renderer $= V4 0 0 204 255
@@ -252,6 +257,7 @@ draw st renderer = do
 
 
 --------------------------------------------------------------------------------
+processEvent :: State -> Event -> State
 processEvent st event | isQPressed event = st { sQuit = True }
 
 processEvent st event                    = case eventPayload event of
@@ -321,24 +327,28 @@ isQPressed event = case eventPayload event of
       == KeycodeQ
   _ -> False
 
+arrowToDelta :: Keycode -> V2 Integer
 arrowToDelta KeycodeLeft  = V2 (-12) 0
 arrowToDelta KeycodeUp    = V2 0 (-15)
 arrowToDelta KeycodeRight = V2 12 0
 arrowToDelta KeycodeDown  = V2 0 15
 arrowToDelta _            = V2 0 0
 
+arrowToDelta' :: Keycode -> V2 CInt
 arrowToDelta' KeycodeLeft  = V2 (-1) 0
 arrowToDelta' KeycodeUp    = V2 0 (-1)
 arrowToDelta' KeycodeRight = V2 1 0
 arrowToDelta' KeycodeDown  = V2 0 1
 arrowToDelta' _            = V2 0 0
 
+hatToDelta :: JoyHatPosition -> V2 CInt
 hatToDelta HatLeft  = V2 (-1) 0
 hatToDelta HatUp    = V2 0 (-1)
 hatToDelta HatRight = V2 1 0
 hatToDelta HatDown  = V2 0 1
 hatToDelta _        = V2 0 0
 
+moveMagnifyingZone :: Point V2 Integer -> V2 Integer -> Point V2 Integer
 moveMagnifyingZone p v = P (V2 x3 y3)
  where
   P (V2 x1 y1) = p .+^ v
@@ -347,6 +357,7 @@ moveMagnifyingZone p v = P (V2 x3 y3)
   y2           = if y1 > 240 - 60 then 240 - 60 else y1
   y3           = if y2 < 0 then 0 else y2
 
+moveCursor :: Point V2 CInt -> V2 CInt -> Point V2 CInt
 moveCursor p v = P (V2 x3 y3)
  where
   P (V2 x1 y1) = p .+^ v
@@ -378,6 +389,9 @@ writeRendererToPNG (Types.Renderer r) fn = do
   withCString fn (savePNG surface)
   Raw.unlockSurface surface
 
+
+--------------------------------------------------------------------------------
+savePNG :: Ptr Raw.Surface -> CString -> IO ()
 savePNG v1 v2 = liftIO (savePNGFFI v1 v2)
 
 foreign import ccall "SDL_image.h IMG_SavePNG"

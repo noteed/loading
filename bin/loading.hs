@@ -55,33 +55,33 @@ parserInfo =
 
 --------------------------------------------------------------------------------
 data Command =
-  Headless
-  | Run
+  Run
+  | Screenshot
 
 parser :: A.Parser Command
-parser = A.subparser
-  (  A.command
-      "headless"
-      (A.info (pure Headless <**> A.helper) $ A.progDesc "Generate a PNG image."
-      )
-
-  <> A.command
-       "run"
-       ( A.info (pure Run <**> A.helper)
-       $ A.progDesc "Run the interactive program."
-       )
-  )
+parser =
+  A.subparser
+    $  A.command
+         "run"
+         ( A.info (pure Run <**> A.helper)
+         $ A.progDesc "Run the interactive program."
+         )
+    <> A.command
+         "screenshot"
+         ( A.info (pure Screenshot <**> A.helper)
+         $ A.progDesc "Generate a PNG image."
+         )
 
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run Headless = headless
-run Run      = interactive
+run Screenshot = screenshot
+run Run        = interactive
 
 
 --------------------------------------------------------------------------------
 -- | Call `draw` once using `initialState`, then save a screenshot.
-headless = do
+screenshot = do
   initializeAll
   -- It is possible to use a hidden window with
   --

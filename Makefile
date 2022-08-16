@@ -2,7 +2,7 @@ bin/loading: bin/loading.hs scripts/build.sh
 	scripts/build.sh
 
 screenshot.png: bin/loading
-	bin/loading headless
+	bin/loading screenshot
 
 .PHONY: run
 run: bin/loading

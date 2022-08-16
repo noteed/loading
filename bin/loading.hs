@@ -82,7 +82,7 @@ parser =
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
 run New = interactive initialState { sMagnified = True }
-                      (\st r -> blue st r >> drawState st r)
+                      (\st r -> blue8x8 st r >> drawState st r)
 run Run = interactive initialState (\st r -> example st r >> drawState st r)
 run Screenshot = screenshot initialState example
 
@@ -267,6 +267,13 @@ example _ renderer = do
 
   -- How to draw a triangle with sdl2-gfx.
   fillTriangle renderer (V2 10 50) (V2 70 70) (V2 60 100) (V4 255 255 0 255)
+
+blue8x8 :: State -> Renderer -> IO ()
+blue8x8 _ renderer = do
+  rendererDrawColor renderer $= V4 205 205 255 255
+  clear renderer
+  rendererDrawColor renderer $= V4 0 0 204 255
+  fillRect renderer (Just (SDL.Rectangle (P (V2 44 26)) (V2 8 8)))
 
 blue :: State -> Renderer -> IO ()
 blue _ renderer = do

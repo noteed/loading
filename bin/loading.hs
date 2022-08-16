@@ -4,6 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import           Control.Applicative
 import           Control.Concurrent             ( threadDelay )
 import           Control.Monad                  ( unless
                                                 , when
@@ -24,6 +25,7 @@ import           Foreign.Ptr                    ( Ptr
                                                 )
 import           Foreign.Storable               ( peek )
 import           Linear                         ( V4(..) )
+import qualified Options.Applicative           as A
 import           SDL
 import qualified SDL.Internal.Types            as Types
 import           SDL.Primitive                  ( fillTriangle )
@@ -41,13 +43,40 @@ frameDuration = 1000 `div` fps
 
 
 --------------------------------------------------------------------------------
-main :: IO ()
-main = do
-  putStrLn "Loading..."
-  args <- getArgs
-  case args of
-    ["headless"] -> headless
-    _            -> run
+main = A.execParser parserInfo >>= run
+
+parserInfo :: A.ParserInfo Command
+parserInfo =
+  A.info (parser <**> A.helper)
+    $  A.fullDesc
+    <> A.header "loading - playing with low-res graphics"
+    <> A.progDesc "`loading` is just a silly experiment."
+
+
+--------------------------------------------------------------------------------
+data Command =
+  Headless
+  | Run
+
+parser :: A.Parser Command
+parser = A.subparser
+  (  A.command
+      "headless"
+      (A.info (pure Headless <**> A.helper) $ A.progDesc "Generate a PNG image."
+      )
+
+  <> A.command
+       "run"
+       ( A.info (pure Run <**> A.helper)
+       $ A.progDesc "Run the interactive program."
+       )
+  )
+
+
+--------------------------------------------------------------------------------
+run :: Command -> IO ()
+run Headless = headless
+run Run      = interactive
 
 
 --------------------------------------------------------------------------------
@@ -76,7 +105,7 @@ headless = do
 
 
 --------------------------------------------------------------------------------
-run = do
+interactive = do
   initializeAll
   window <- createWindow "Loading..."
                          defaultWindow { windowInitialSize = V2 1920 1200 }

@@ -6,7 +6,7 @@ screenshot.png: bin/loading
 
 .PHONY: run
 run: bin/loading
-	bin/loading
+	bin/loading run
 
 .PHONY: view
 view: screenshot.png

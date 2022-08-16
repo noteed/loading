@@ -56,7 +56,7 @@ $ make run
 When quitting, a screenshot is captured as `screenshot.png`.
 
 A nice way to view the screenshot that mimics the behavior of the SDL window
-under my xmonad configration is using the following helper that uses `feh`:
+under my xmonad configuration is using the following helper that uses `feh`:
 
 ```
 $ make view

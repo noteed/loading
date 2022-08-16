@@ -319,7 +319,7 @@ processEvent st event                    = case eventPayload event of
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
       == KeycodeSpace
-    -> st { sPoints = sCursor st : sPoints st }
+    -> addPoint st
     | keyboardEventKeyMotion keyboardEvent == Pressed
     -> let arrow  = keysymKeycode (keyboardEventKeysym keyboardEvent)
            curpos = moveCursor (sCursor st) (arrowToDelta' arrow)
@@ -345,12 +345,18 @@ processEvent st event                    = case eventPayload event of
       == JoyButtonPressed
     ->
     -- "A" button.
-       st { sPoints = sCursor st : sPoints st }
+       addPoint st
 
   JoyHatEvent (JoyHatEventData {..}) | joyHatEventWhich == 0 ->
     st { sCursor = moveCursor (sCursor st) (hatToDelta joyHatEventValue) }
 
   _ -> st
+
+addPoint :: State -> State
+addPoint st = if p `elem` sPoints st
+  then st { sPoints = filter (/= p) (sPoints st) }
+  else st { sPoints = sCursor st : sPoints st }
+  where p = sCursor st
 
 isQPressed event = case eventPayload event of
   KeyboardEvent keyboardEvent ->

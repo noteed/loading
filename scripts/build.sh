@@ -1,4 +1,5 @@
-#! /usr/bin/env bash
+#! /usr/bin/env nix-shell
+#! nix-shell -i bash ../shell.nix
 
 # Compile against sdl2-image for the IMG_SavePNG binding.
 # This is fragile as it relies on hard-coded path in the Nix store.

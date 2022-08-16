@@ -81,9 +81,10 @@ parser =
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run New        = new
-run Run        = interactive initialState draw
-run Screenshot = screenshot initialState draw
+run New = interactive initialState { sMagnified = True }
+                      (\st r -> blue st r >> drawState st r)
+run Run = interactive initialState (\st r -> example st r >> drawState st r)
+run Screenshot = screenshot initialState example
 
 
 --------------------------------------------------------------------------------
@@ -185,7 +186,7 @@ initialState = State { sQuit         = False
                      , sShowEvents   = False
                      , sMagnifiedPos = P (V2 0 0)
                      , sMagnified    = False
-                     , sCursor       = P (V2 (384 `div` 2) (240 `div` 2))
+                     , sCursor       = P (V2 (96 `div` 2) (60 `div` 2))
                      , sPoints       = []
                      }
 
@@ -247,16 +248,13 @@ withLowResolution st target renderer drawingFunction = do
 
   present renderer
 
-draw :: State -> Renderer -> IO ()
-draw st renderer = do
+example :: State -> Renderer -> IO ()
+example _ renderer = do
   -- Clear to blue.
   rendererDrawColor renderer $= V4 0 0 204 255
   clear renderer
 
-  -- How to draw a point.
   rendererDrawColor renderer $= V4 255 255 255 255
-  drawPoint renderer (sCursor st)
-  mapM_ (drawPoint renderer) (sPoints st)
 
   -- How to draw a rectangle outline.
   drawRect renderer (Just (SDL.Rectangle (P (V2 20 10)) (V2 20 20)))
@@ -269,6 +267,19 @@ draw st renderer = do
 
   -- How to draw a triangle with sdl2-gfx.
   fillTriangle renderer (V2 10 50) (V2 70 70) (V2 60 100) (V4 255 255 0 255)
+
+blue :: State -> Renderer -> IO ()
+blue _ renderer = do
+  -- Clear to blue.
+  rendererDrawColor renderer $= V4 0 0 204 255
+  clear renderer
+
+drawState :: State -> Renderer -> IO ()
+drawState st renderer = do
+  -- How to draw a point.
+  rendererDrawColor renderer $= V4 255 255 255 255
+  drawPoint renderer (sCursor st)
+  mapM_ (drawPoint renderer) (sPoints st)
 
 
 --------------------------------------------------------------------------------

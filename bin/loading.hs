@@ -26,7 +26,8 @@ import           Foreign.Ptr                    ( Ptr
 import           Foreign.Storable               ( peek )
 import           Linear                         ( V4(..) )
 import qualified Options.Applicative           as A
-import           SDL
+import           SDL                     hiding ( initialize )
+import           SDL.Image                      ( loadTexture )
 import qualified SDL.Internal.Types            as Types
 import           SDL.Primitive                  ( fillTriangle )
 import qualified SDL.Raw                       as Raw
@@ -55,18 +56,15 @@ parserInfo =
 
 --------------------------------------------------------------------------------
 data Command =
-  New
+  Edit
   | Run
   | Screenshot
 
 parser :: A.Parser Command
 parser =
   A.subparser
-    $  A.command
-         "new"
-         ( A.info (pure New <**> A.helper)
-         $ A.progDesc "Create a new 8x8 binary image."
-         )
+    $  A.command "edit"
+                 (A.info (pure Edit <**> A.helper) $ A.progDesc "Edit a PNG.")
     <> A.command
          "run"
          ( A.info (pure Run <**> A.helper)
@@ -81,15 +79,26 @@ parser =
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run New = interactive initialState { sMagnified = True }
-                      (\st r -> blue8x8 st r >> drawState st r)
+run Edit = edit
 run Run = interactive initialState (\st r -> example st r >> drawState st r)
 run Screenshot = screenshot initialState example
 
 
 --------------------------------------------------------------------------------
-new = do
-  undefined
+edit = do
+  (renderer, target) <- initialize
+  texture            <- loadTexture renderer "editable.png"
+  loop
+    target
+    renderer
+    initialState
+    (\st r -> copy r
+                   texture
+                   (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+                   (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+    )
+  destroyTexture target
+  destroyRenderer renderer
 
 
 --------------------------------------------------------------------------------
@@ -125,18 +134,11 @@ screenshot initial background = do
 -- function used as a background.
 interactive :: State -> (State -> Renderer -> IO ()) -> IO ()
 interactive initial background = do
-  initializeAll
-  window <- createWindow "Loading..."
-                         defaultWindow { windowInitialSize = V2 1920 1200 }
-  renderer <- createRenderer window (-1) defaultRenderer
-
-  -- Create a render target with a low resolution and big pixels. See
-  -- withLowResolution for details.
-  target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+  (renderer, target) <- initialize
 
   -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
   -- below will reports gamepad events.
-  n        <- numJoysticks
+  n                  <- numJoysticks
   putStrLn ("Detected " ++ show n ++ " gamepads.")
   gamepads <- availableJoysticks
   mapM_ (putStrLn . logGamepad) gamepads
@@ -144,7 +146,6 @@ interactive initial background = do
     then Just <$> openJoystick (V.head gamepads)
     else return Nothing
 
-  putStrLn "Press `q` to quit."
   loop target renderer initial background
 
   maybe (return ()) closeJoystick gamepad
@@ -158,6 +159,18 @@ interactive initial background = do
   -- TODO How to implement a fullscreen mode ?
   -- I tried to change the defaultWindow { windowMode = Fullscreen } or
   -- { windowMode = FullscreenDesktop } but this didn't work...
+
+initialize = do
+  initializeAll
+  window <- createWindow "Loading..."
+                         defaultWindow { windowInitialSize = V2 1920 1200 }
+  renderer <- createRenderer window (-1) defaultRenderer
+
+  -- Create a render target with a low resolution and big pixels. See
+  -- withLowResolution for details.
+  target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+
+  pure (renderer, target)
 
 logGamepad JoystickDevice {..} =
   "Gamepad #"

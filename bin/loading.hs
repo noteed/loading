@@ -116,6 +116,7 @@ screenshot initial background = do
   writeRendererToPNG renderer "screenshot.png"
 
   destroyRenderer renderer
+  freeSurface surface
   putStrLn "Done."
 
 

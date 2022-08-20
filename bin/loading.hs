@@ -168,16 +168,16 @@ logGamepad JoystickDevice {..} =
 
 --------------------------------------------------------------------------------
 data State = State
-  { sQuit :: Bool
+  { sQuit         :: Bool
     -- ^ When True, exit the main loop.
-  , sShowEvents :: Bool
+  , sShowEvents   :: Bool
     -- ^ When True, log the polled events.
   , sMagnifiedPos :: Point V2 CInt
-  , sMagnified :: Bool
+  , sMagnified    :: Bool
     -- ^ When True, show a mignified zone of the screen.
-  , sCursor :: Point V2 CInt
+  , sCursor       :: Point V2 CInt
     -- ^ The main controlling point to interact with the application.
-  , sPoints :: [Point V2 CInt]
+  , sPoints       :: [Point V2 CInt]
     -- ^ Points to draw. They are added by left-clicking.
   }
 
@@ -422,7 +422,8 @@ writeRendererToPNG (Types.Renderer r) fn = do
   format  <- Raw.surfaceFormat <$> peek surface
   format' <- Raw.pixelFormatFormat <$> peek format
   pixels  <- Raw.surfacePixels <$> peek surface
-  Raw.renderReadPixels r nullPtr format' pixels (384 * 4) -- Surface pitch: width x bytes per pixel. This is normally a
+  Raw.renderReadPixels r nullPtr format' pixels (384 * 4)
+              -- Surface pitch: width x bytes per pixel. This is normally a
               -- field within the SDL surface but is hidden in the current
               -- bindings.
   withCString fn (savePNG surface)

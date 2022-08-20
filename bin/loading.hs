@@ -20,6 +20,7 @@ import           Foreign.C.String               ( CString
                                                 , withCString
                                                 )
 import           Foreign.C.Types                ( CInt )
+import           Foreign.Marshal.Utils          ( copyBytes )
 import           Foreign.Ptr                    ( Ptr
                                                 , nullPtr
                                                 )
@@ -27,7 +28,7 @@ import           Foreign.Storable               ( peek )
 import           Linear                         ( V4(..) )
 import qualified Options.Applicative           as A
 import           SDL                     hiding ( initialize )
-import           SDL.Image                      ( loadTexture )
+import           SDL.Image                      ( load )
 import qualified SDL.Internal.Types            as Types
 import           SDL.Primitive                  ( fillTriangle )
 import qualified SDL.Raw                       as Raw
@@ -41,6 +42,9 @@ fps = 60
 
 -- | Duration of a frame, in milliseconds.
 frameDuration = 1000 `div` fps
+
+lowRes = V2 384 240
+lowResRect = SDL.Rectangle (P (V2 0 0)) lowRes
 
 
 --------------------------------------------------------------------------------
@@ -87,18 +91,51 @@ run Screenshot = screenshot initialState example
 --------------------------------------------------------------------------------
 edit = do
   (renderer, target) <- initialize
-  texture            <- loadTexture renderer "editable.png"
+  streaming          <- loadStreaming renderer "editable.png"
   loop
     target
     renderer
     initialState
-    (\st r -> copy r
-                   texture
-                   (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
-                   (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+    (\st r -> do
+      -- lockTexture texture Nothing
+      -- unlockTexture texture
+      copy r streaming (Just lowResRect) (Just lowResRect)
     )
   destroyTexture target
   destroyRenderer renderer
+
+-- | Load a PNG to a streaming texture. The library's `loadTexture` is simpler
+-- to use but doesn't return a streaming texture.
+loadStreaming renderer path = do
+  surface   <- loadSurface path
+  streaming <- createTexture renderer RGBA8888 TextureAccessStreaming lowRes
+  copySurface streaming surface
+  pure streaming
+
+-- | Load a PNG to a surface with the RGBA8888 format.
+loadSurface path = do
+  -- We load a surface, convert it to make sure it is in RGBA8888 format.
+  surface  <- load path
+  -- Dummy surface, to create a SurfacePixelFormat because I don't how to
+  -- create one otherwise.
+  surface_ <- createRGBSurface (V2 32 32) RGBA8888
+  format   <- surfaceFormat surface_
+  surface' <- convertSurface surface format
+  freeSurface surface_
+  -- Note that it seems we can't free the dummy surface before we use its
+  -- format.
+  freeSurface surface
+  return surface'
+
+-- | Copy the pixels from a surface to a streaming texture.
+copySurface streaming surface = do
+  lockSurface surface
+  srcPixels           <- surfacePixels surface
+  (destPixels, pitch) <- lockTexture streaming Nothing
+  copyBytes destPixels srcPixels (fromIntegral pitch * 240)
+  unlockTexture streaming
+  unlockSurface surface
+  freeSurface surface
 
 
 --------------------------------------------------------------------------------

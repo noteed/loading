@@ -16,12 +16,15 @@ import           Data.Int                       ( Int32 )
 import           Data.List                      ( foldl' )
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
+import           Data.Word                      ( Word8 )
 import           Foreign.C.String               ( CString
                                                 , withCString
                                                 )
 import           Foreign.C.Types                ( CInt )
+import           Foreign.Marshal.Array          ( pokeArray )
 import           Foreign.Marshal.Utils          ( copyBytes )
 import           Foreign.Ptr                    ( Ptr
+                                                , castPtr
                                                 , nullPtr
                                                 )
 import           Foreign.Storable               ( peek )
@@ -97,8 +100,9 @@ edit = do
     renderer
     initialState
     (\st r -> do
-      -- lockTexture texture Nothing
-      -- unlockTexture texture
+      (pixels, _) <- lockTexture streaming Nothing
+      pokeArray (castPtr pixels :: Ptr Word8) [0 .. 255]
+      unlockTexture streaming
       copy r streaming (Just lowResRect) (Just lowResRect)
     )
   destroyTexture target

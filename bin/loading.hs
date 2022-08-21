@@ -92,6 +92,7 @@ run Screenshot = screenshot initialState example
 
 
 --------------------------------------------------------------------------------
+edit :: IO ()
 edit = do
   (renderer, target) <- initialize
   streaming          <- loadStreaming renderer "editable.png"
@@ -110,6 +111,7 @@ edit = do
 
 -- | Load a PNG to a streaming texture. The library's `loadTexture` is simpler
 -- to use but doesn't return a streaming texture.
+loadStreaming :: Renderer -> FilePath -> IO Texture
 loadStreaming renderer path = do
   surface   <- loadSurface path
   streaming <- createTexture renderer RGBA8888 TextureAccessStreaming lowRes
@@ -117,6 +119,7 @@ loadStreaming renderer path = do
   pure streaming
 
 -- | Load a PNG to a surface with the RGBA8888 format.
+loadSurface :: FilePath -> IO Surface
 loadSurface path = do
   -- We load a surface, convert it to make sure it is in RGBA8888 format.
   surface  <- load path
@@ -132,6 +135,7 @@ loadSurface path = do
   return surface'
 
 -- | Copy the pixels from a surface to a streaming texture.
+copySurface :: Texture -> Surface -> IO ()
 copySurface streaming surface = do
   lockSurface surface
   srcPixels           <- surfacePixels surface
@@ -201,6 +205,7 @@ interactive initial background = do
   -- I tried to change the defaultWindow { windowMode = Fullscreen } or
   -- { windowMode = FullscreenDesktop } but this didn't work...
 
+initialize :: IO (Renderer, Texture)
 initialize = do
   initializeAll
   window <- createWindow "Loading..."
@@ -213,6 +218,7 @@ initialize = do
 
   pure (renderer, target)
 
+logGamepad :: JoystickDevice -> String
 logGamepad JoystickDevice {..} =
   "Gamepad #"
     ++ show joystickDeviceId
@@ -413,6 +419,7 @@ addPoint st = if p `elem` sPoints st
   else st { sPoints = sCursor st : sPoints st }
   where p = sCursor st
 
+isQPressed :: Event -> Bool
 isQPressed event = case eventPayload event of
   KeyboardEvent keyboardEvent ->
     keyboardEventKeyMotion keyboardEvent

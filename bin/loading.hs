@@ -109,42 +109,6 @@ edit = do
   destroyTexture target
   destroyRenderer renderer
 
--- | Load a PNG to a streaming texture. The library's `loadTexture` is simpler
--- to use but doesn't return a streaming texture.
-loadStreaming :: Renderer -> FilePath -> IO Texture
-loadStreaming renderer path = do
-  surface   <- loadSurface path
-  streaming <- createTexture renderer RGBA8888 TextureAccessStreaming lowRes
-  copySurface streaming surface
-  pure streaming
-
--- | Load a PNG to a surface with the RGBA8888 format.
-loadSurface :: FilePath -> IO Surface
-loadSurface path = do
-  -- We load a surface, convert it to make sure it is in RGBA8888 format.
-  surface  <- load path
-  -- Dummy surface, to create a SurfacePixelFormat because I don't how to
-  -- create one otherwise.
-  surface_ <- createRGBSurface (V2 32 32) RGBA8888
-  format   <- surfaceFormat surface_
-  surface' <- convertSurface surface format
-  freeSurface surface_
-  -- Note that it seems we can't free the dummy surface before we use its
-  -- format.
-  freeSurface surface
-  return surface'
-
--- | Copy the pixels from a surface to a streaming texture.
-copySurface :: Texture -> Surface -> IO ()
-copySurface streaming surface = do
-  lockSurface surface
-  srcPixels           <- surfacePixels surface
-  (destPixels, pitch) <- lockTexture streaming Nothing
-  copyBytes destPixels srcPixels (fromIntegral pitch * 240)
-  unlockTexture streaming
-  unlockSurface surface
-  freeSurface surface
-
 
 --------------------------------------------------------------------------------
 -- | Call a drawing function once, using an initial state, then save a
@@ -490,6 +454,44 @@ writeRendererToPNG (Types.Renderer r) fn = do
               -- bindings.
   withCString fn (savePNG surface)
   Raw.unlockSurface surface
+
+
+--------------------------------------------------------------------------------
+-- | Load a PNG to a streaming texture. The library's `loadTexture` is simpler
+-- to use but doesn't return a streaming texture.
+loadStreaming :: Renderer -> FilePath -> IO Texture
+loadStreaming renderer path = do
+  surface   <- loadSurface path
+  streaming <- createTexture renderer RGBA8888 TextureAccessStreaming lowRes
+  copySurface streaming surface
+  pure streaming
+
+-- | Load a PNG to a surface with the RGBA8888 format.
+loadSurface :: FilePath -> IO Surface
+loadSurface path = do
+  -- We load a surface, convert it to make sure it is in RGBA8888 format.
+  surface  <- load path
+  -- Dummy surface, to create a SurfacePixelFormat because I don't how to
+  -- create one otherwise.
+  surface_ <- createRGBSurface (V2 32 32) RGBA8888
+  format   <- surfaceFormat surface_
+  surface' <- convertSurface surface format
+  freeSurface surface_
+  -- Note that it seems we can't free the dummy surface before we use its
+  -- format.
+  freeSurface surface
+  return surface'
+
+-- | Copy the pixels from a surface to a streaming texture.
+copySurface :: Texture -> Surface -> IO ()
+copySurface streaming surface = do
+  lockSurface surface
+  srcPixels           <- surfacePixels surface
+  (destPixels, pitch) <- lockTexture streaming Nothing
+  copyBytes destPixels srcPixels (fromIntegral pitch * 240)
+  unlockTexture streaming
+  unlockSurface surface
+  freeSurface surface
 
 
 --------------------------------------------------------------------------------

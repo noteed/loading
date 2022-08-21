@@ -6,9 +6,7 @@ module Main where
 
 import           Control.Applicative
 import           Control.Concurrent             ( threadDelay )
-import           Control.Monad                  ( unless
-                                                , when
-                                                )
+import           Control.Monad                  ( when )
 import           Control.Monad.IO.Class         ( MonadIO
                                                 , liftIO
                                                 )
@@ -230,19 +228,19 @@ loop target renderer st background = do
 
   withLowResolution st' target renderer background
 
-  -- Save a screen capture when exiting.
-  when (sQuit st') $ do
-    putStrLn "Saving screenshot to screenshot.png..."
-    rendererRenderTarget renderer $= (Just target)
-    writeRendererToPNG renderer "screenshot.png"
-    rendererRenderTarget renderer $= Nothing
-
   t2 <- ticks
-  unless (sQuit st') $ do
-    -- Convert from milliseconds to microseconds.
-    -- I guess this can drift over time. TODO Something more solid.
-    threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
-    loop target renderer st' background
+  if sQuit st'
+    then do
+      -- Save a screen capture when exiting.
+      putStrLn "Saving screenshot to screenshot.png..."
+      rendererRenderTarget renderer $= (Just target)
+      writeRendererToPNG renderer "screenshot.png"
+      rendererRenderTarget renderer $= Nothing
+    else do
+      -- Convert from milliseconds to microseconds.
+      -- I guess this can drift over time. TODO Something more solid.
+      threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
+      loop target renderer st' background
 
 example :: State -> Renderer -> IO ()
 example _ renderer = do

@@ -14,7 +14,9 @@ import           Data.Foldable                  ( foldlM )
 import           Data.Int                       ( Int32 )
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
-import           Data.Word                      ( Word8 )
+import           Data.Word                      ( Word32
+                                                , Word8
+                                                )
 import           Foreign.C.String               ( CString
                                                 , withCString
                                                 )
@@ -95,8 +97,10 @@ edit :: IO ()
 edit = do
   (renderer, target) <- initialize
   streaming          <- loadStreaming renderer "editable.png"
+  t1                 <- ticks
   loop
     (renderer, target)
+    t1
     initialState { sEditing = Just streaming }
     (\st r -> do
       copy r streaming (Just lowResRect) (Just lowResRect)
@@ -122,7 +126,8 @@ interactive initial background = do
     then Just <$> openJoystick (V.head gamepads)
     else return Nothing
 
-  loop (renderer, target) initial background
+  t1 <- ticks
+  loop (renderer, target) t1 initial background
 
   maybe (return ()) closeJoystick gamepad
   destroy (renderer, target)
@@ -237,16 +242,19 @@ applyOperation st Nop = pure $ st
 
 
 --------------------------------------------------------------------------------
-loop :: (Renderer, Texture) -> State -> (State -> Renderer -> IO ()) -> IO ()
-loop (renderer, target) st background = do
-  t1     <- ticks
+loop
+  :: (Renderer, Texture)
+  -> Word32
+  -> State
+  -> (State -> Renderer -> IO ())
+  -> IO ()
+loop (renderer, target) t1 st background = do
   events <- pollEvents
   when (sShowEvents st) $ mapM_ print events
   st' <- foldlM applyOperation st $ map processEvent events
 
   withLowResolution st' target renderer background
 
-  t2 <- ticks
   if sQuit st'
     then do
       -- Save a screen capture when exiting.
@@ -257,8 +265,10 @@ loop (renderer, target) st background = do
     else do
       -- In milliseconds.
       -- I guess this can drift over time. TODO Something more solid.
-      delay . fromIntegral $ frameDuration - (t2 - t1)
-      loop (renderer, target) st' background
+      t2 <- ticks
+      let frameCompletion = max (frameDuration - (t2 - t1)) 0
+      delay $ fromIntegral frameCompletion
+      loop (renderer, target) (t2 + frameCompletion) st' background
 
 example :: State -> Renderer -> IO ()
 example _ renderer = do

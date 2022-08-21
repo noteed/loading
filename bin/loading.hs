@@ -169,19 +169,6 @@ interactive initial background = do
   -- I tried to change the defaultWindow { windowMode = Fullscreen } or
   -- { windowMode = FullscreenDesktop } but this didn't work...
 
-initialize :: IO (Renderer, Texture)
-initialize = do
-  initializeAll
-  window <- createWindow "Loading..."
-                         defaultWindow { windowInitialSize = V2 1920 1200 }
-  renderer <- createRenderer window (-1) defaultRenderer
-
-  -- Create a render target with a low resolution and big pixels. See
-  -- withLowResolution for details.
-  target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
-
-  pure (renderer, target)
-
 logGamepad :: JoystickDevice -> String
 logGamepad JoystickDevice {..} =
   "Gamepad #"
@@ -438,6 +425,21 @@ moveCursor p v = P (V2 x3 y3)
 int32ToCInt :: Point V2 Int32 -> Point V2 CInt
 int32ToCInt (P (V2 x y)) =
   P (V2 (fromIntegral x `div` 5) (fromIntegral y `div` 5))
+
+
+--------------------------------------------------------------------------------
+initialize :: IO (Renderer, Texture)
+initialize = do
+  initializeAll
+  window <- createWindow "Loading..."
+                         defaultWindow { windowInitialSize = V2 1920 1200 }
+  renderer <- createRenderer window (-1) defaultRenderer
+
+  -- Create a render target with a low resolution and big pixels. See
+  -- withLowResolution for details.
+  target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
+
+  pure (renderer, target)
 
 
 --------------------------------------------------------------------------------

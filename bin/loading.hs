@@ -111,34 +111,6 @@ edit = do
 
 
 --------------------------------------------------------------------------------
--- | Call a drawing function once, using an initial state, then save a
--- screenshot.
-screenshot :: State -> (State -> Renderer -> IO ()) -> IO ()
-screenshot initial background = do
-  initializeAll
-  -- It is possible to use a hidden window with
-  --
-  --     window <- createWindow "Loading..." defaultWindow
-  --       { windowInitialSize = V2 384 240, windowVisible = False }
-  --
-  -- then a renderer as usual, but it seems the rendering is not done unless the
-  -- window is showed. Instead for headless rendering, we use
-  -- createSoftwareRenderer.
-  surface  <- createRGBSurface (V2 384 240) RGBA8888
-  renderer <- createSoftwareRenderer surface
-
-  background initial renderer
-  present renderer
-
-  putStrLn "Saving screenshot to screenshot.png..."
-  writeRendererToPNG renderer "screenshot.png"
-
-  destroyRenderer renderer
-  freeSurface surface
-  putStrLn "Done."
-
-
---------------------------------------------------------------------------------
 -- | Run the main interactive game loop, using an initial state and a drawing
 -- function used as a background.
 interactive :: State -> (State -> Renderer -> IO ()) -> IO ()
@@ -176,6 +148,34 @@ logGamepad JoystickDevice {..} =
     ++ " is "
     ++ T.unpack joystickDeviceName
     ++ "."
+
+
+--------------------------------------------------------------------------------
+-- | Call a drawing function once, using an initial state, then save a
+-- screenshot.
+screenshot :: State -> (State -> Renderer -> IO ()) -> IO ()
+screenshot initial background = do
+  initializeAll
+  -- It is possible to use a hidden window with
+  --
+  --     window <- createWindow "Loading..." defaultWindow
+  --       { windowInitialSize = V2 384 240, windowVisible = False }
+  --
+  -- then a renderer as usual, but it seems the rendering is not done unless the
+  -- window is showed. Instead for headless rendering, we use
+  -- createSoftwareRenderer.
+  surface  <- createRGBSurface (V2 384 240) RGBA8888
+  renderer <- createSoftwareRenderer surface
+
+  background initial renderer
+  present renderer
+
+  putStrLn "Saving screenshot to screenshot.png..."
+  writeRendererToPNG renderer "screenshot.png"
+
+  destroyRenderer renderer
+  freeSurface surface
+  putStrLn "Done."
 
 
 --------------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import           Control.Monad.IO.Class         ( MonadIO
 import           Data.Foldable                  ( foldlM )
 import           Data.Int                       ( Int32 )
 import           Data.Maybe                     ( isJust )
+import           Data.Primitive.Ptr
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
 import           Data.Word                      ( Word32
@@ -220,8 +221,8 @@ applyOperation st Clear = do
     Just streaming -> do
       let P (V2 x y) = sCursor st
       (pixels, pitch) <- lockTexture streaming Nothing
-      let color = V4 0 255 0 0 -- blue. This seems to be ABGR ...
-      pokeArray (castPtr pixels :: Ptr (V4 Word8)) $ replicate (384 * 240) color
+      let color = 0x0000FF00 :: Word32 -- RGBA, so blue.
+      setPtr (castPtr pixels :: Ptr Word32) (384 * 240) color
       unlockTexture streaming
       pure st
     Nothing -> pure $ addPoint st

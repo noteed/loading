@@ -215,8 +215,17 @@ applyOperation st Clear = do
     Just streaming -> do
       let P (V2 x y) = sCursor st
       (pixels, pitch) <- lockTexture streaming Nothing
-      let color = 0x0000FF00 :: Word32 -- RGBA, so blue.
-      setPtr (castPtr pixels :: Ptr Word32) (384 * 240) color
+      -- let color = 0x0000FF00 :: Word32 -- RGBA, so blue.
+      -- setPtr (castPtr pixels :: Ptr Word32) (384 * 240) color
+      let
+        color1 = V4 0 255 34 34 -- blue. This seems to be ABGR ...
+        color2 = V4 0 255 0 0 -- blue. This seems to be ABGR ...
+        band1 =
+          take (8 * 384) $ cycle (replicate 8 color1 ++ replicate 8 color2)
+        band2 =
+          take (8 * 384) $ cycle (replicate 8 color2 ++ replicate 8 color1)
+      pokeArray (castPtr pixels :: Ptr (V4 Word8)) $ take (384 * 240) $ cycle
+        (band1 ++ band2)
       unlockTexture streaming
       pure st
     Nothing -> pure $ addPoint st

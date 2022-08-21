@@ -259,10 +259,7 @@ loop (renderer, target) t1 st background = do
   if sQuit st'
     then do
       -- Save a screen capture when exiting.
-      putStrLn "Saving screenshot to screenshot.png..."
-      rendererRenderTarget renderer $= (Just target)
-      writeRendererToPNG renderer "screenshot.png"
-      rendererRenderTarget renderer $= Nothing
+      screenshot (renderer, target)
     else do
       -- In milliseconds.
       -- I guess this can drift over time. TODO Something more solid.
@@ -493,6 +490,12 @@ withLowResolution st target renderer drawingFunction = do
 
   present renderer
 
+screenshot :: (Renderer, Texture) -> IO ()
+screenshot (renderer, target) = do
+  putStrLn "Saving screenshot to screenshot.png..."
+  rendererRenderTarget renderer $= (Just target)
+  writeRendererToPNG renderer "screenshot.png"
+  rendererRenderTarget renderer $= Nothing
 
 --------------------------------------------------------------------------------
 writeRendererToPNG :: Renderer -> FilePath -> IO ()

@@ -24,6 +24,7 @@ import           Foreign.Marshal.Utils          ( copyBytes )
 import           Foreign.Ptr                    ( Ptr
                                                 , castPtr
                                                 , nullPtr
+                                                , plusPtr
                                                 )
 import           Foreign.Storable               ( peek )
 import           Linear                         ( V4(..) )
@@ -98,10 +99,8 @@ edit = do
     (renderer, target)
     initialState { sEditing = Just streaming }
     (\st r -> do
-      (pixels, _) <- lockTexture streaming Nothing
-      pokeArray (castPtr pixels :: Ptr Word8) [0 .. 255]
-      unlockTexture streaming
       copy r streaming (Just lowResRect) (Just lowResRect)
+      drawState st r
     )
   destroy (renderer, target)
 
@@ -214,7 +213,19 @@ applyOperation st (Click p) = pure $ st
 applyOperation st (MoveCursor d) =
   pure $ st { sCursor = moveCursor (sCursor st) d }
 
-applyOperation st AddPoint = pure $ addPoint st
+applyOperation st AddPoint = do
+  case sEditing st of
+    Just streaming -> do
+      let P (V2 x y) = sCursor st
+      (pixels, pitch) <- lockTexture streaming Nothing
+      let pixels' =
+            plusPtr (castPtr pixels :: Ptr Word8)
+              $ fromIntegral y
+              * fromIntegral pitch
+      pokeArray (castPtr pixels' :: Ptr Word8) [0 .. 255]
+      unlockTexture streaming
+      pure st
+    Nothing -> pure $ addPoint st
 
 applyOperation st ToggleShowEvents =
   pure $ st { sShowEvents = not (sShowEvents st) }

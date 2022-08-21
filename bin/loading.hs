@@ -33,6 +33,7 @@ import           Linear                         ( V4(..) )
 import qualified Options.Applicative           as A
 import           SDL                     hiding ( initialize )
 import           SDL.Image                      ( load )
+import qualified SDL.Image
 import qualified SDL.Internal.Types            as Types
 import           SDL.Primitive                  ( fillTriangle )
 import qualified SDL.Raw                       as Raw
@@ -457,6 +458,8 @@ destroy :: (Renderer, Texture) -> IO ()
 destroy (renderer, target) = do
   destroyTexture target
   destroyRenderer renderer
+  SDL.Image.quit
+  quit
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another

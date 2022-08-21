@@ -264,7 +264,12 @@ loop (renderer, target) t1 st background = do
       -- In milliseconds.
       -- I guess this can drift over time. TODO Something more solid.
       t2 <- ticks
-      let frameCompletion = max (frameDuration - (t2 - t1)) 0
+      let frameCompletion_ = frameDuration - (t2 - t1)
+          frameCompletion =
+            -- t2 and t1 are Word32. If we have to wait for more than
+            -- frameDuration, it means wrap-around occurred and actually means
+            -- we-re running late.
+            if frameCompletion_ > frameDuration then 0 else frameCompletion_
       delay $ fromIntegral frameCompletion
       loop (renderer, target) (t2 + frameCompletion) st' background
 

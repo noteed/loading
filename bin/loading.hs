@@ -95,8 +95,7 @@ edit = do
   (renderer, target) <- initialize
   streaming          <- loadStreaming renderer "editable.png"
   loop
-    target
-    renderer
+    (renderer, target)
     initialState
     (\st r -> do
       (pixels, _) <- lockTexture streaming Nothing
@@ -124,7 +123,7 @@ interactive initial background = do
     then Just <$> openJoystick (V.head gamepads)
     else return Nothing
 
-  loop target renderer initial background
+  loop (renderer, target) initial background
 
   maybe (return ()) closeJoystick gamepad
   destroy (renderer, target)
@@ -219,8 +218,8 @@ applyOperation st Nop = st
 
 
 --------------------------------------------------------------------------------
-loop :: Texture -> Renderer -> State -> (State -> Renderer -> IO ()) -> IO ()
-loop target renderer st background = do
+loop :: (Renderer, Texture) -> State -> (State -> Renderer -> IO ()) -> IO ()
+loop (renderer, target) st background = do
   t1     <- ticks
   events <- pollEvents
   when (sShowEvents st) $ mapM_ print events
@@ -240,7 +239,7 @@ loop target renderer st background = do
       -- Convert from milliseconds to microseconds.
       -- I guess this can drift over time. TODO Something more solid.
       threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
-      loop target renderer st' background
+      loop (renderer, target) st' background
 
 example :: State -> Renderer -> IO ()
 example _ renderer = do

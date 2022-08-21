@@ -254,7 +254,7 @@ loop (renderer, target) t1 st background = do
   when (sShowEvents st) $ mapM_ print events
   st' <- foldlM applyOperation st $ map processEvent events
 
-  withLowResolution st' target renderer background
+  withLowResolution (renderer, target) st' background
 
   if sQuit st'
     then do
@@ -463,8 +463,8 @@ destroy (renderer, target) = do
 -- way is to use rendererLogicalSize but unfortunately, this doesn't affect
 -- sdl2-gfx's `triangle` routine, nor even the normal `drawLine` routine.
 withLowResolution
-  :: State -> Texture -> Renderer -> (State -> Renderer -> IO ()) -> IO ()
-withLowResolution st target renderer drawingFunction = do
+  :: (Renderer, Texture) -> State -> (State -> Renderer -> IO ()) -> IO ()
+withLowResolution (renderer, target) st drawingFunction = do
   rendererRenderTarget renderer $= (Just target)
 
   drawingFunction st renderer

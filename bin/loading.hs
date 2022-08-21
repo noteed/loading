@@ -511,6 +511,7 @@ writeRendererToPNG (Types.Renderer r) fn = do
               -- bindings.
   withCString fn (savePNG surface)
   Raw.unlockSurface surface
+  Raw.freeSurface surface
 
 
 --------------------------------------------------------------------------------

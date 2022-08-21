@@ -106,8 +106,7 @@ edit = do
       unlockTexture streaming
       copy r streaming (Just lowResRect) (Just lowResRect)
     )
-  destroyTexture target
-  destroyRenderer renderer
+  destroy (renderer, target)
 
 
 --------------------------------------------------------------------------------
@@ -130,16 +129,7 @@ interactive initial background = do
   loop target renderer initial background
 
   maybe (return ()) closeJoystick gamepad
-  destroyTexture target
-  destroyRenderer renderer
-  putStrLn "Bye."
-
-  -- -1 means "initialize the first rendering driver supporting the requested
-  -- flags": see https://wiki.libsdl.org/SDL_CreateRenderer.
-  --
-  -- TODO How to implement a fullscreen mode ?
-  -- I tried to change the defaultWindow { windowMode = Fullscreen } or
-  -- { windowMode = FullscreenDesktop } but this didn't work...
+  destroy (renderer, target)
 
 logGamepad :: JoystickDevice -> String
 logGamepad JoystickDevice {..} =
@@ -402,6 +392,12 @@ initialize = do
   initializeAll
   window <- createWindow "Loading..."
                          defaultWindow { windowInitialSize = V2 1920 1200 }
+  -- -1 means "initialize the first rendering driver supporting the requested
+  -- flags": see https://wiki.libsdl.org/SDL_CreateRenderer.
+  --
+  -- TODO How to implement a fullscreen mode ?
+  -- I tried to change the defaultWindow { windowMode = Fullscreen } or
+  -- { windowMode = FullscreenDesktop } but this didn't work...
   renderer <- createRenderer window (-1) defaultRenderer
 
   -- Create a render target with a low resolution and big pixels. See
@@ -409,6 +405,11 @@ initialize = do
   target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
 
   pure (renderer, target)
+
+destroy :: (Renderer, Texture) -> IO ()
+destroy (renderer, target) = do
+  destroyTexture target
+  destroyRenderer renderer
 
 -- | Use a low resolution texture as a rendering target. Instead of 320x240, I
 -- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another

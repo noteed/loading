@@ -67,18 +67,18 @@ parserInfo =
 
 --------------------------------------------------------------------------------
 data Command =
-  Edit
-  | Run
+  Edit RendererType
+  | Run RendererType
   | Headless
 
 parser :: A.Parser Command
 parser =
   A.subparser
     $  A.command "edit"
-                 (A.info (pure Edit <**> A.helper) $ A.progDesc "Edit a PNG.")
+                 (A.info (editParser <**> A.helper) $ A.progDesc "Edit a PNG.")
     <> A.command
          "run"
-         ( A.info (pure Run <**> A.helper)
+         ( A.info (runParser <**> A.helper)
          $ A.progDesc "Run the interactive program."
          )
     <> A.command
@@ -87,18 +87,33 @@ parser =
          $ A.progDesc "Generate a PNG image."
          )
 
+editParser :: A.Parser Command
+editParser = Edit <$> vsyncParser
+
+runParser :: A.Parser Command
+runParser = Run <$> vsyncParser
+
+vsyncParser :: A.Parser RendererType
+vsyncParser =
+  A.flag AcceleratedVSyncRenderer AcceleratedRenderer
+    $  A.long "no-vsync"
+    <> A.help "Disable vsync."
+       -- One way I saw that vsync did help, was letting my finger on the "m"
+       -- key, setting and unsetting the magnification repeatedly.
+
 
 --------------------------------------------------------------------------------
 run :: Command -> IO ()
-run Edit = edit
-run Run = interactive initialState (\st r -> example st r >> drawState st r)
+run (Edit rType) = edit rType
+run (Run rType) =
+  interactive rType initialState (\st r -> example st r >> drawState st r)
 run Headless = headless initialState example
 
 
 --------------------------------------------------------------------------------
-edit :: IO ()
-edit = do
-  (renderer, target, mgamepad) <- initialize
+edit :: RendererType -> IO ()
+edit rType = do
+  (renderer, target, mgamepad) <- initialize rType
   streaming                    <- loadStreaming renderer "editable.png"
   t1                           <- ticks
   loop
@@ -115,9 +130,9 @@ edit = do
 --------------------------------------------------------------------------------
 -- | Run the main interactive game loop, using an initial state and a drawing
 -- function used as a background.
-interactive :: State -> (State -> Renderer -> IO ()) -> IO ()
-interactive initial background = do
-  (renderer, target, mgamepad) <- initialize
+interactive :: RendererType -> State -> (State -> Renderer -> IO ()) -> IO ()
+interactive rType initial background = do
+  (renderer, target, mgamepad) <- initialize rType
   t1                           <- ticks
   loop (renderer, target) t1 initial background
   destroy (renderer, target, mgamepad)
@@ -452,8 +467,8 @@ int32ToCInt (P (V2 x y)) =
 
 
 --------------------------------------------------------------------------------
-initialize :: IO (Renderer, Texture, Maybe Joystick)
-initialize = do
+initialize :: RendererType -> IO (Renderer, Texture, Maybe Joystick)
+initialize rType = do
   initializeAll
   window <- createWindow "Loading..."
                          defaultWindow { windowInitialSize = V2 1920 1200 }
@@ -463,7 +478,9 @@ initialize = do
   -- TODO How to implement a fullscreen mode ?
   -- I tried to change the defaultWindow { windowMode = Fullscreen } or
   -- { windowMode = FullscreenDesktop } but this didn't work...
-  renderer <- createRenderer window (-1) defaultRenderer
+  renderer <- createRenderer window
+                             (-1)
+                             defaultRenderer { rendererType = rType }
 
   -- Create a render target with a low resolution and big pixels. See
   -- withLowResolution for details.

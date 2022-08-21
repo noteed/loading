@@ -204,6 +204,7 @@ data Operation =
   | ToggleShowEvents
   | ToggleMagnification
   | AddPoint
+  | Clear
   | Screenshot
   | Quit
   | Nop
@@ -212,7 +213,18 @@ data Operation =
 -- | Applying an operation is mostly pure (returns a new State), but parts of
 -- the state can be e.g. a streaming texture, and changing it is done in IO.
 applyOperation :: State -> Operation -> IO State
-applyOperation st Quit       = pure $ st { sQuit = True }
+applyOperation st Quit  = pure $ st { sQuit = True }
+
+applyOperation st Clear = do
+  case sEditing st of
+    Just streaming -> do
+      let P (V2 x y) = sCursor st
+      (pixels, pitch) <- lockTexture streaming Nothing
+      let color = V4 0 255 0 0 -- blue. This seems to be ABGR ...
+      pokeArray (castPtr pixels :: Ptr (V4 Word8)) $ replicate (384 * 240) color
+      unlockTexture streaming
+      pure st
+    Nothing -> pure $ addPoint st
 
 applyOperation st Screenshot = pure st -- This is handled directly in the loop.
 
@@ -328,6 +340,8 @@ drawState st renderer = do
 processEvent :: Event -> Operation
 processEvent event | isQPressed event = Quit
 
+processEvent event | isCPressed event = Clear
+
 processEvent event | isSPressed event = Screenshot
 
 processEvent event                    = case eventPayload event of
@@ -392,21 +406,21 @@ addPoint st = if p `elem` sPoints st
   where p = sCursor st
 
 isQPressed :: Event -> Bool
-isQPressed event = case eventPayload event of
-  KeyboardEvent keyboardEvent ->
-    keyboardEventKeyMotion keyboardEvent
-      == Pressed
-      && keysymKeycode (keyboardEventKeysym keyboardEvent)
-      == KeycodeQ
-  _ -> False
+isQPressed = isPressed KeycodeQ
+
+isCPressed :: Event -> Bool
+isCPressed = isPressed KeycodeC
 
 isSPressed :: Event -> Bool
-isSPressed event = case eventPayload event of
+isSPressed = isPressed KeycodeS
+
+isPressed :: Keycode -> Event -> Bool
+isPressed keycode event = case eventPayload event of
   KeyboardEvent keyboardEvent ->
     keyboardEventKeyMotion keyboardEvent
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
-      == KeycodeS
+      == keycode
   _ -> False
 
 arrowToDelta :: Keycode -> V2 Integer

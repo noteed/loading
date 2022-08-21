@@ -98,9 +98,9 @@ run Headless = headless initialState example
 --------------------------------------------------------------------------------
 edit :: IO ()
 edit = do
-  (renderer, target) <- initialize
-  streaming          <- loadStreaming renderer "editable.png"
-  t1                 <- ticks
+  (renderer, target, mgamepad) <- initialize
+  streaming                    <- loadStreaming renderer "editable.png"
+  t1                           <- ticks
   loop
     (renderer, target)
     t1
@@ -109,7 +109,7 @@ edit = do
       copy r streaming (Just lowResRect) (Just lowResRect)
       drawState st r
     )
-  destroy (renderer, target)
+  destroy (renderer, target, mgamepad)
 
 
 --------------------------------------------------------------------------------
@@ -117,31 +117,10 @@ edit = do
 -- function used as a background.
 interactive :: State -> (State -> Renderer -> IO ()) -> IO ()
 interactive initial background = do
-  (renderer, target) <- initialize
-
-  -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
-  -- below will reports gamepad events.
-  n                  <- numJoysticks
-  putStrLn ("Detected " ++ show n ++ " gamepads.")
-  gamepads <- availableJoysticks
-  mapM_ (putStrLn . logGamepad) gamepads
-  gamepad <- if not (V.null gamepads)
-    then Just <$> openJoystick (V.head gamepads)
-    else return Nothing
-
-  t1 <- ticks
+  (renderer, target, mgamepad) <- initialize
+  t1                           <- ticks
   loop (renderer, target) t1 initial background
-
-  maybe (return ()) closeJoystick gamepad
-  destroy (renderer, target)
-
-logGamepad :: JoystickDevice -> String
-logGamepad JoystickDevice {..} =
-  "Gamepad #"
-    ++ show joystickDeviceId
-    ++ " is "
-    ++ T.unpack joystickDeviceName
-    ++ "."
+  destroy (renderer, target, mgamepad)
 
 
 --------------------------------------------------------------------------------
@@ -473,7 +452,7 @@ int32ToCInt (P (V2 x y)) =
 
 
 --------------------------------------------------------------------------------
-initialize :: IO (Renderer, Texture)
+initialize :: IO (Renderer, Texture, Maybe Joystick)
 initialize = do
   initializeAll
   window <- createWindow "Loading..."
@@ -490,10 +469,13 @@ initialize = do
   -- withLowResolution for details.
   target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
 
-  pure (renderer, target)
+  mgamepad <- openGamepad
 
-destroy :: (Renderer, Texture) -> IO ()
-destroy (renderer, target) = do
+  pure (renderer, target, mgamepad)
+
+destroy :: (Renderer, Texture, Maybe Joystick) -> IO ()
+destroy (renderer, target, mgamepad) = do
+  maybe (return ()) closeJoystick mgamepad
   destroyTexture target
   destroyRenderer renderer
   SDL.Image.quit
@@ -537,6 +519,25 @@ screenshot (renderer, target) path = do
   rendererRenderTarget renderer $= (Just target)
   writeRendererToPNG renderer path
   rendererRenderTarget renderer $= Nothing
+
+openGamepad = do
+  -- Enumerate gamepads, then open the first one. After doing so, `pollEvents`
+  -- in `loop` will reports gamepad events.
+  n <- numJoysticks
+  putStrLn ("Detected " ++ show n ++ " gamepads.")
+  gamepads <- availableJoysticks
+  mapM_ (putStrLn . logGamepad) gamepads
+  if not (V.null gamepads)
+    then Just <$> openJoystick (V.head gamepads)
+    else pure Nothing
+
+logGamepad :: JoystickDevice -> String
+logGamepad JoystickDevice {..} =
+  "Gamepad #"
+    ++ show joystickDeviceId
+    ++ " is "
+    ++ T.unpack joystickDeviceName
+    ++ "."
 
 --------------------------------------------------------------------------------
 writeRendererToPNG :: Renderer -> FilePath -> IO ()

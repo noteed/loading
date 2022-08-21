@@ -12,6 +12,7 @@ import           Control.Monad.IO.Class         ( MonadIO
                                                 )
 import           Data.Foldable                  ( foldlM )
 import           Data.Int                       ( Int32 )
+import           Data.Maybe                     ( isJust )
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
 import           Data.Word                      ( Word32
@@ -203,15 +204,19 @@ data Operation =
   | ToggleShowEvents
   | ToggleMagnification
   | AddPoint
+  | Screenshot
   | Quit
   | Nop
+  deriving (Eq, Show)
 
 -- | Applying an operation is mostly pure (returns a new State), but parts of
 -- the state can be e.g. a streaming texture, and changing it is done in IO.
 applyOperation :: State -> Operation -> IO State
-applyOperation st Quit      = pure $ st { sQuit = True }
+applyOperation st Quit       = pure $ st { sQuit = True }
 
-applyOperation st (Click p) = pure $ st
+applyOperation st Screenshot = pure st -- This is handled directly in the loop.
+
+applyOperation st (Click p)  = pure $ st
   { sCursor       = p
   , sMagnifiedPos = if sMagnified st then sMagnifiedPos st else p
   }
@@ -252,14 +257,19 @@ loop
 loop (renderer, target) t1 st background = do
   events <- pollEvents
   when (sShowEvents st) $ mapM_ print events
-  st' <- foldlM applyOperation st $ map processEvent events
+  let operations = map processEvent events
+
+  when (Screenshot `elem` operations) $ do
+    screenshot (renderer, target) "screenshot.png"
+
+  st' <- foldlM applyOperation st operations
 
   withLowResolution (renderer, target) st' background
 
   if sQuit st'
     then do
       -- Save a screen capture when exiting.
-      screenshot (renderer, target)
+      when (isJust $ sEditing st) $ screenshot (renderer, target) "editable.png"
     else do
       -- In milliseconds.
       -- I guess this can drift over time. TODO Something more solid.
@@ -317,6 +327,8 @@ drawState st renderer = do
 --------------------------------------------------------------------------------
 processEvent :: Event -> Operation
 processEvent event | isQPressed event = Quit
+
+processEvent event | isSPressed event = Screenshot
 
 processEvent event                    = case eventPayload event of
   MouseButtonEvent (MouseButtonEventData {..}) ->
@@ -386,6 +398,15 @@ isQPressed event = case eventPayload event of
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
       == KeycodeQ
+  _ -> False
+
+isSPressed :: Event -> Bool
+isSPressed event = case eventPayload event of
+  KeyboardEvent keyboardEvent ->
+    keyboardEventKeyMotion keyboardEvent
+      == Pressed
+      && keysymKeycode (keyboardEventKeysym keyboardEvent)
+      == KeycodeS
   _ -> False
 
 arrowToDelta :: Keycode -> V2 Integer
@@ -495,11 +516,11 @@ withLowResolution (renderer, target) st drawingFunction = do
 
   present renderer
 
-screenshot :: (Renderer, Texture) -> IO ()
-screenshot (renderer, target) = do
-  putStrLn "Saving screenshot to screenshot.png..."
+screenshot :: (Renderer, Texture) -> FilePath -> IO ()
+screenshot (renderer, target) path = do
+  putStrLn $ "Saving screenshot to " <> path <> "..."
   rendererRenderTarget renderer $= (Just target)
-  writeRendererToPNG renderer "screenshot.png"
+  writeRendererToPNG renderer path
   rendererRenderTarget renderer $= Nothing
 
 --------------------------------------------------------------------------------

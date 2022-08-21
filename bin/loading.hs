@@ -225,12 +225,10 @@ loop :: Texture -> Renderer -> State -> (State -> Renderer -> IO ()) -> IO ()
 loop target renderer st background = do
   t1     <- ticks
   events <- pollEvents
-
-  withLowResolution st target renderer background
-
   when (sShowEvents st) $ mapM_ print events
-
   let st' = foldl' applyOperation st $ map processEvent events
+
+  withLowResolution st' target renderer background
 
   -- Save a screen capture when exiting.
   when (sQuit st') $ do

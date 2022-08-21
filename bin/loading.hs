@@ -30,7 +30,7 @@ import           Foreign.Ptr                    ( Ptr
                                                 , nullPtr
                                                 , plusPtr
                                                 )
-import           Foreign.Storable               ( peek )
+import           Foreign.Storable               ( peek, poke )
 import           Linear                         ( V4(..) )
 import qualified Options.Applicative           as A
 import           SDL                     hiding ( initialize )
@@ -238,9 +238,11 @@ applyOperation st AddPoint = do
       (pixels, pitch) <- lockTexture streaming Nothing
       let pixels' =
             plusPtr (castPtr pixels :: Ptr Word8)
-              $ fromIntegral y
-              * fromIntegral pitch
-      pokeArray (castPtr pixels' :: Ptr Word8) [0 .. 255]
+              $ fromIntegral $ y
+              * pitch
+              + x
+              * 4
+      poke (castPtr pixels' :: Ptr Word32) 0xFFFFFF00
       unlockTexture streaming
       pure st
     Nothing -> pure $ addPoint st

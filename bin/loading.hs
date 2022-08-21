@@ -10,8 +10,8 @@ import           Control.Monad                  ( when )
 import           Control.Monad.IO.Class         ( MonadIO
                                                 , liftIO
                                                 )
+import           Data.Foldable                  ( foldlM )
 import           Data.Int                       ( Int32 )
-import           Data.List                      ( foldl' )
 import qualified Data.Text                     as T
 import qualified Data.Vector                   as V
 import           Data.Word                      ( Word8 )
@@ -96,7 +96,7 @@ edit = do
   streaming          <- loadStreaming renderer "editable.png"
   loop
     (renderer, target)
-    initialState
+    initialState { sEditing = Just streaming }
     (\st r -> do
       (pixels, _) <- lockTexture streaming Nothing
       pokeArray (castPtr pixels :: Ptr Word8) [0 .. 255]
@@ -178,6 +178,8 @@ data State = State
     -- ^ The main controlling point to interact with the application.
   , sPoints       :: [Point V2 CInt]
     -- ^ Points to draw. They are added by left-clicking.
+  , sEditing      :: Maybe Texture
+    -- ^ In Edit mode, the streaming texture being edited.
   }
 
 initialState :: State
@@ -187,6 +189,7 @@ initialState = State { sQuit         = False
                      , sMagnified    = False
                      , sCursor       = P (V2 (96 `div` 2) (60 `div` 2))
                      , sPoints       = []
+                     , sEditing      = Nothing
                      }
 
 data Operation =
@@ -198,23 +201,28 @@ data Operation =
   | Quit
   | Nop
 
-applyOperation :: State -> Operation -> State
-applyOperation st Quit      = st { sQuit = True }
+-- | Applying an operation is mostly pure (returns a new State), but parts of
+-- the state can be e.g. a streaming texture, and changing it is done in IO.
+applyOperation :: State -> Operation -> IO State
+applyOperation st Quit      = pure $ st { sQuit = True }
 
-applyOperation st (Click p) = st
+applyOperation st (Click p) = pure $ st
   { sCursor       = p
   , sMagnifiedPos = if sMagnified st then sMagnifiedPos st else p
   }
 
-applyOperation st (MoveCursor d) = st { sCursor = moveCursor (sCursor st) d }
+applyOperation st (MoveCursor d) =
+  pure $ st { sCursor = moveCursor (sCursor st) d }
 
-applyOperation st AddPoint = addPoint st
+applyOperation st AddPoint = pure $ addPoint st
 
-applyOperation st ToggleShowEvents = st { sShowEvents = not (sShowEvents st) }
+applyOperation st ToggleShowEvents =
+  pure $ st { sShowEvents = not (sShowEvents st) }
 
-applyOperation st ToggleMagnification = st { sMagnified = not (sMagnified st) }
+applyOperation st ToggleMagnification =
+  pure $ st { sMagnified = not (sMagnified st) }
 
-applyOperation st Nop = st
+applyOperation st Nop = pure $ st
 
 
 --------------------------------------------------------------------------------
@@ -223,7 +231,7 @@ loop (renderer, target) st background = do
   t1     <- ticks
   events <- pollEvents
   when (sShowEvents st) $ mapM_ print events
-  let st' = foldl' applyOperation st $ map processEvent events
+  st' <- foldlM applyOperation st $ map processEvent events
 
   withLowResolution st' target renderer background
 

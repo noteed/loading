@@ -67,7 +67,7 @@ parserInfo =
 data Command =
   Edit
   | Run
-  | Screenshot
+  | Headless
 
 parser :: A.Parser Command
 parser =
@@ -80,8 +80,8 @@ parser =
          $ A.progDesc "Run the interactive program."
          )
     <> A.command
-         "screenshot"
-         ( A.info (pure Screenshot <**> A.helper)
+         "headless"
+         ( A.info (pure Headless <**> A.helper)
          $ A.progDesc "Generate a PNG image."
          )
 
@@ -90,7 +90,7 @@ parser =
 run :: Command -> IO ()
 run Edit = edit
 run Run = interactive initialState (\st r -> example st r >> drawState st r)
-run Screenshot = screenshot initialState example
+run Headless = headless initialState example
 
 
 --------------------------------------------------------------------------------
@@ -145,8 +145,8 @@ logGamepad JoystickDevice {..} =
 --------------------------------------------------------------------------------
 -- | Call a drawing function once, using an initial state, then save a
 -- screenshot.
-screenshot :: State -> (State -> Renderer -> IO ()) -> IO ()
-screenshot initial background = do
+headless :: State -> (State -> Renderer -> IO ()) -> IO ()
+headless initial background = do
   initializeAll
   -- It is possible to use a hidden window with
   --

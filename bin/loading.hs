@@ -255,9 +255,9 @@ loop (renderer, target) st background = do
       writeRendererToPNG renderer "screenshot.png"
       rendererRenderTarget renderer $= Nothing
     else do
-      -- Convert from milliseconds to microseconds.
+      -- In milliseconds.
       -- I guess this can drift over time. TODO Something more solid.
-      threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
+      delay . fromIntegral $ frameDuration - (t2 - t1)
       loop (renderer, target) st' background
 
 example :: State -> Renderer -> IO ()

@@ -192,6 +192,33 @@ initialState = State { sQuit         = False
                      , sPoints       = []
                      }
 
+data Operation =
+    Click (Point V2 CInt)
+  | MoveCursor (V2 CInt)
+  | ToggleShowEvents
+  | ToggleMagnification
+  | AddPoint
+  | Quit
+  | Nop
+
+applyOperation :: State -> Operation -> State
+applyOperation st Quit      = st { sQuit = True }
+
+applyOperation st (Click p) = st
+  { sCursor       = p
+  , sMagnifiedPos = if sMagnified st then sMagnifiedPos st else p
+  }
+
+applyOperation st (MoveCursor d) = st { sCursor = moveCursor (sCursor st) d }
+
+applyOperation st AddPoint = addPoint st
+
+applyOperation st ToggleShowEvents = st { sShowEvents = not (sShowEvents st) }
+
+applyOperation st ToggleMagnification = st { sMagnified = not (sMagnified st) }
+
+applyOperation st Nop = st
+
 
 --------------------------------------------------------------------------------
 loop :: Texture -> Renderer -> State -> (State -> Renderer -> IO ()) -> IO ()
@@ -203,7 +230,7 @@ loop target renderer st background = do
 
   when (sShowEvents st) $ mapM_ print events
 
-  let st' = foldl' processEvent st events
+  let st' = foldl' applyOperation st $ map processEvent events
 
   -- Save a screen capture when exiting.
   when (sQuit st') $ do
@@ -261,40 +288,34 @@ drawState st renderer = do
 
 
 --------------------------------------------------------------------------------
-processEvent :: State -> Event -> State
-processEvent st event | isQPressed event = st { sQuit = True }
+processEvent :: Event -> Operation
+processEvent event | isQPressed event = Quit
 
-processEvent st event                    = case eventPayload event of
+processEvent event                    = case eventPayload event of
   MouseButtonEvent (MouseButtonEventData {..}) ->
     if mouseButtonEventButton == ButtonLeft && mouseButtonEventMotion == Pressed
-      then st
-        { sCursor       = int32ToCInt mouseButtonEventPos
-        , sMagnifiedPos = if sMagnified st
-                            then sMagnifiedPos st
-                            else int32ToCInt mouseButtonEventPos
-        }
-      else st
+      then Click $ int32ToCInt mouseButtonEventPos
+      else Nop
 
   KeyboardEvent keyboardEvent
     | keyboardEventKeyMotion keyboardEvent
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
       == KeycodeE
-    -> st { sShowEvents = not (sShowEvents st) }
+    -> ToggleShowEvents
     | keyboardEventKeyMotion keyboardEvent
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
       == KeycodeM
-    -> st { sMagnified = not (sMagnified st) }
+    -> ToggleMagnification
     | keyboardEventKeyMotion keyboardEvent
       == Pressed
       && keysymKeycode (keyboardEventKeysym keyboardEvent)
       == KeycodeSpace
-    -> addPoint st
+    -> AddPoint
     | keyboardEventKeyMotion keyboardEvent == Pressed
-    -> let arrow  = keysymKeycode (keyboardEventKeysym keyboardEvent)
-           curpos = moveCursor (sCursor st) (arrowToDelta' arrow)
-       in  st { sCursor = curpos }
+    -> let arrow = keysymKeycode (keyboardEventKeysym keyboardEvent)
+       in  MoveCursor $ arrowToDelta' arrow
 
   JoyButtonEvent (JoyButtonEventData {..})
     | joyButtonEventWhich
@@ -305,7 +326,7 @@ processEvent st event                    = case eventPayload event of
       == JoyButtonPressed
     ->
     -- Right shoulder button.
-       st { sMagnified = not (sMagnified st) }
+       ToggleMagnification
 
   JoyButtonEvent (JoyButtonEventData {..})
     | joyButtonEventWhich
@@ -316,13 +337,15 @@ processEvent st event                    = case eventPayload event of
       == JoyButtonPressed
     ->
     -- "A" button.
-       addPoint st
+       AddPoint
 
   JoyHatEvent (JoyHatEventData {..}) | joyHatEventWhich == 0 ->
-    st { sCursor = moveCursor (sCursor st) (hatToDelta joyHatEventValue) }
+    MoveCursor $ hatToDelta joyHatEventValue
 
-  _ -> st
+  _ -> Nop
 
+
+--------------------------------------------------------------------------------
 addPoint :: State -> State
 addPoint st = if p `elem` sPoints st
   then st { sPoints = filter (/= p) (sPoints st) }

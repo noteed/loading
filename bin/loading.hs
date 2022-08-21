@@ -214,6 +214,7 @@ loop target renderer st background = do
   when (sShowEvents st) $ mapM_ print events
 
   let st' = foldl' processEvent st events
+
   -- Save a screen capture when exiting.
   when (sQuit st') $ do
     putStrLn "Saving screenshot to screenshot.png..."
@@ -227,38 +228,6 @@ loop target renderer st background = do
     -- I guess this can drift over time. TODO Something more solid.
     threadDelay (fromIntegral ((frameDuration - (t2 - t1)) * 1000))
     loop target renderer st' background
-
--- | Use a low resolution texture as a rendering target. Instead of 320x240, I
--- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another
--- way is to use rendererLogicalSize but unfortunately, this doesn't affect
--- sdl2-gfx's `triangle` routine, nor even the normal `drawLine` routine.
-withLowResolution
-  :: State -> Texture -> Renderer -> (State -> Renderer -> IO ()) -> IO ()
-withLowResolution st target renderer drawingFunction = do
-  rendererRenderTarget renderer $= (Just target)
-
-  drawingFunction st renderer
-
-  -- Reset the render target to the default.
-  rendererRenderTarget renderer $= Nothing
-
-  -- Render the previous render target to the default render target.
-  -- When magnified, a 96x60 zone is magnified 20x and rendered on the screen.
-  if (sMagnified st)
-    then do
-      copy renderer
-           target
-           (Just (SDL.Rectangle (sMagnifiedPos st) (V2 96 60)))
-           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
-    else do
-  -- Otherwise, the whole previous target is rendered. 1 pixel becomes a 5x5
-  -- square.
-      copy renderer
-           target
-           (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
-           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
-
-  present renderer
 
 example :: State -> Renderer -> IO ()
 example _ renderer = do
@@ -440,6 +409,38 @@ initialize = do
   target   <- createTexture renderer RGBA8888 TextureAccessTarget (V2 384 240)
 
   pure (renderer, target)
+
+-- | Use a low resolution texture as a rendering target. Instead of 320x240, I
+-- use something similar but with a 1.6 aspect ratio (instead of 1.33). Another
+-- way is to use rendererLogicalSize but unfortunately, this doesn't affect
+-- sdl2-gfx's `triangle` routine, nor even the normal `drawLine` routine.
+withLowResolution
+  :: State -> Texture -> Renderer -> (State -> Renderer -> IO ()) -> IO ()
+withLowResolution st target renderer drawingFunction = do
+  rendererRenderTarget renderer $= (Just target)
+
+  drawingFunction st renderer
+
+  -- Reset the render target to the default.
+  rendererRenderTarget renderer $= Nothing
+
+  -- Render the previous render target to the default render target.
+  -- When magnified, a 96x60 zone is magnified 20x and rendered on the screen.
+  if (sMagnified st)
+    then do
+      copy renderer
+           target
+           (Just (SDL.Rectangle (sMagnifiedPos st) (V2 96 60)))
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+    else do
+  -- Otherwise, the whole previous target is rendered. 1 pixel becomes a 5x5
+  -- square.
+      copy renderer
+           target
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 384 240)))
+           (Just (SDL.Rectangle (P (V2 0 0)) (V2 1920 1200)))
+
+  present renderer
 
 
 --------------------------------------------------------------------------------

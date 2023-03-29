@@ -11,6 +11,13 @@ The code doesn't do much: it displays a window, and a littel dot. It can be
 moved with the arrow keys, a dot can be drawn by pressing `enter`, and `q`
 exits the program.
 
+Simply setting an environment variable is enough to get controller events even
+when the window is not visible:
+
+```
+$ SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1 bin/loading run
+```
+
 
 ## Building
 

@@ -39,7 +39,6 @@ import qualified SDL.Image
 import qualified SDL.Internal.Types            as Types
 import           SDL.Primitive                  ( fillTriangle )
 import qualified SDL.Raw                       as Raw
-import           System.Environment             ( getArgs )
 
 
 --------------------------------------------------------------------------------
@@ -273,6 +272,8 @@ loop
   -> (State -> Renderer -> IO ())
   -> IO ()
 loop (renderer, target) t1 st background = do
+  pumpEvents -- This is supposed to be implicitely called by pollEvents
+             -- but pollEvents returns nothing without it.
   events <- pollEvents
   when (sShowEvents st) $ mapM_ print events
   let operations = map processEvent events

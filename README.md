@@ -24,20 +24,13 @@ $ SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1 bin/loading run
 To build the binary at `bin/loading`, simply run
 
 ```
-$ make
+$ nix-build -A binaries
 ```
 
 To validate the code during developement, use `ghcid` by running:
 
 ```
 $ scripts/ghcid.sh
-```
-
-As a convenience, it is possible to run the executable, ensuring it is built
-only if necessary:
-
-```
-$ make run
 ```
 
 
@@ -63,10 +56,10 @@ $ make run
 When quitting, a screenshot is captured as `screenshot.png`.
 
 A nice way to view the screenshot that mimics the behavior of the SDL window
-under my xmonad configuration is using the following helper that uses `feh`:
+under my xmonad configuration is using the following call:
 
 ```
-$ make view
+$ feh --borderless --force-aliasing -g 1920x1200+320+120 --zoom fill screenshot.png
 ```
 
 This creates a floating, centered window with the 384x240 image scaled,

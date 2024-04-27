@@ -8,7 +8,7 @@ Just trying out the SDL2 library with Haskell.
   automatically use the above `shell.nix` upon entering this directory.
 
 The code doesn't do much: it displays a window, and a littel dot. It can be
-moved with the arrow keys, a dot can be drawn by pressing `enter`, and `q`
+moved with the arrow keys, a dot can be drawn by pressing `space`, and `q`
 exits the program.
 
 Simply setting an environment variable is enough to get controller events even
